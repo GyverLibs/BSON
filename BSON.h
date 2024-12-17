@@ -28,6 +28,7 @@
 class BSON : private gtl::stack_uniq<uint8_t> {
    public:
     using gtl::stack_uniq<uint8_t>::write;
+    using gtl::stack_uniq<uint8_t>::concat;
     using gtl::stack_uniq<uint8_t>::reserve;
     using gtl::stack_uniq<uint8_t>::length;
     using gtl::stack_uniq<uint8_t>::buf;
