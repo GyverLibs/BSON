@@ -114,6 +114,7 @@ void addFloat(const Text& key, T value, uint8_t dec);
 void addText(const Text& text);
 void addText(uint16_t key, const Text& text);
 void addText(const Text& key, const Text& text);
+void beginText(size_t len);
 
 // bin
 void addBin(const void* data, size_t size);

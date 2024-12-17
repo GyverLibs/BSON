@@ -231,6 +231,10 @@ class BSON : private gtl::stack_uniq<uint8_t> {
         addKey(key);
         _text(text, BS_VAL_STR);
     }
+    void beginText(size_t len) {
+        push(BS_VAL_STR | BS_MSB5(len));
+        push(BS_LSB(len));
+    }
 
     // bin
     void addBin(const void* data, size_t size) {
