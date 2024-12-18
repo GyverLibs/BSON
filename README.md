@@ -40,8 +40,8 @@
 1 key str: [len msb:5] + [len:8] + [...]
 2 val code: [code msb:5] + [code:8]
 3 val str: [len msb:5] + [len:8] + [...]
-4 val int: [sign:1 + len:4]
-5 val float: [dec:5]
+4 val int: [sign:1 + bool:1 + len:3] + [...]
+5 val float: [dec:5] + [...]
 6 cont: [obj:1 / arr:0] + [open:1 / close:0]
 7 bin: [len msb:5] + [len:8] + [...]
 ```
@@ -93,13 +93,7 @@ void addBool(bool b);
 void addBool(uint16_t key, bool b);
 void addBool(const Text& key, bool b);
 
-// uint
-void addUint(T val);
-void addUint(unsigned long long val);
-void addUint(uint16_t key, T val);
-void addUint(const Text& key, T val);
-
-// int
+// int/uint
 void addInt(T val);
 void addInt(long long val);
 void addInt(uint16_t key, T val);
@@ -111,10 +105,10 @@ void addFloat(uint16_t key, T value, uint8_t dec);
 void addFloat(const Text& key, T value, uint8_t dec);
 
 // text
-void addText(const Text& text);
-void addText(uint16_t key, const Text& text);
-void addText(const Text& key, const Text& text);
-void beginText(size_t len);
+void addStr(const Text& text);
+void addStr(uint16_t key, const Text& text);
+void addStr(const Text& key, const Text& text);
+void beginStr(size_t len);
 
 // bin
 void addBin(const void* data, size_t size);
@@ -143,7 +137,7 @@ bs.addInt("key", 123);
 bs["key2"] = 456;
 
 bs.beginArr("arr");
-bs.addText("str1");
+bs.addStr("str1");
 bs += F("str2");
 bs += "str3";
 bs.endArr();
