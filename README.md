@@ -78,54 +78,53 @@ void operator+=(const BSON& bson);
 
 // key
 void addKey(uint16_t key);
-void addKey(const Text& key);
+void addKey(Text key);
 
 BSON& operator[](uint16_t key);
 BSON& operator[](Text key);
 
 // code
 void addCode(uint16_t key, uint16_t val);
-void addCode(const Text& key, uint16_t val);
+void addCode(Text key, uint16_t val);
 void addCode(uint16_t val);
 
 // bool
 void addBool(bool b);
 void addBool(uint16_t key, bool b);
-void addBool(const Text& key, bool b);
+void addBool(Text key, bool b);
 
 // int/uint
 void addInt(T val);
-void addInt(long long val);
 void addInt(uint16_t key, T val);
-void addInt(const Text& key, T val);
+void addInt(Text key, T val);
 
 // float
 void addFloat(T value, uint8_t dec);
 void addFloat(uint16_t key, T value, uint8_t dec);
-void addFloat(const Text& key, T value, uint8_t dec);
+void addFloat(Text key, T value, uint8_t dec);
 
 // text
-void addStr(const Text& text);
-void addStr(uint16_t key, const Text& text);
-void addStr(const Text& key, const Text& text);
+void addStr(Text text);
+void addStr(uint16_t key, Text text);
+void addStr(Text key, Text text);
 void beginStr(size_t len);
 
 // bin
 void addBin(const void* data, size_t size);
-void addBin(const Text& key, const void* data, size_t size);
+void addBin(Text key, const void* data, size_t size);
 void addBin(uint16_t key, const void* data, size_t size);
 bool beginBin(uint16_t size);
 
 // object
 void beginObj();
 void beginObj(uint16_t key);
-void beginObj(const Text& key);
+void beginObj(Text key);
 void endObj();
 
 // array
 void beginArr();
 void beginArr(uint16_t key);
-void beginArr(const Text& key);
+void beginArr(Text key);
 void endArr();
 ```
 
