@@ -64,28 +64,37 @@ void setup() {
         b.addStr("cstring", "text");
         b.addStr("fstring", F("text"));
         b.addStr("String", String("text"));
+        
         b.addBool("true", true);
         b.addBool("false", false);
+
+        b.addInt("nan", NAN);
+        b.addInt("inf", INFINITY);
         b.addInt("int0", -0);
         b.addInt("int8", -123);
         b.addInt("int16", -12345);
         b.addInt("int24", -1234567);
         b.addInt("int32", -123456789);
         b.addInt("int40", -1000000000000);
+
         b.addInt("uint0", 0);
         b.addInt("uint8", 123);
         b.addInt("uint16", 12345);
         b.addInt("uint24", 1234567);
         b.addInt("uint32", 123456789);
         b.addInt("uint40", 1000000000000);
+
         b.addInt("uint0+", 0u);
         b.addInt("uint8+", 123u);
         b.addInt("uint16+", 12345u);
         b.addInt("uint24+", 1234567u);
         b.addInt("uint32+", 123456789u);
         b.addInt("uint40+", 1000000000000ull);
+
         b.addFloat("float1", 3.1415, 1);
         b.addFloat("float4", 3.1415, 4);
+        b.addFloat("fnan", NAN, 4);
+        b.addFloat("finf", INFINITY, 4);
         b.endObj();
 
         server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
