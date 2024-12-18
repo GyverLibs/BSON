@@ -60,20 +60,24 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     }
 
     // bson
-    void add(const BSON& bson) {
+    BSON& add(const BSON& bson) {
         concat(bson);
+        return *this;
     }
-    void operator+=(const BSON& bson) {
+    BSON& operator+=(const BSON& bson) {
         concat(bson);
+        return *this;
     }
 
     // key
-    void addKey(uint16_t key) {
+    BSON& addKey(uint16_t key) {
         push(BS_KEY_CODE | (key & 0b000));
         push(BS_LSB(key));
+        return *this;
     }
-    void addKey(const Text& key) {
+    BSON& addKey(const Text& key) {
         _text(key, BS_KEY_STR);
+        return *this;
     }
 
     BSON& operator[](uint16_t key) {
@@ -86,99 +90,116 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     }
 
     // code
-    void addCode(uint16_t key, uint16_t val) {
+    BSON& addCode(uint16_t key, uint16_t val) {
         reserve(length() + 5);
         addKey(key);
         addCode(val);
+        return *this;
     }
-    void addCode(const Text& key, uint16_t val) {
+    BSON& addCode(const Text& key, uint16_t val) {
         addKey(key);
         addCode(val);
+        return *this;
     }
-    void addCode(uint16_t val) {
+    BSON& addCode(uint16_t val) {
         push(BS_VAL_CODE | BS_MSB5(val));
         push(BS_LSB(val));
+        return *this;
     }
 
     // bool
-    void addBool(bool b) {
+    BSON& addBool(bool b) {
         addUint(b);
+        return *this;
     }
-    void addBool(uint16_t key, bool b) {
+    BSON& addBool(uint16_t key, bool b) {
         addKey(key);
         addUint(b);
+        return *this;
     }
-    void addBool(const Text& key, bool b) {
+    BSON& addBool(const Text& key, bool b) {
         addKey(key);
         addUint(b);
+        return *this;
     }
 
     // uint
     template <typename T>
-    void addUint(T val) {
+    BSON& addUint(T val) {
         uint8_t len = _uintSize(val);
         push(BS_VAL_INT | len);
         concat((uint8_t*)&val, len);
+        return *this;
     }
-    void addUint(unsigned long long val) {
+    BSON& addUint(unsigned long long val) {
         uint8_t len = _uint64Size(val);
         push(BS_VAL_INT | len);
         concat((uint8_t*)&val, len);
+        return *this;
     }
     template <typename T>
-    void addUint(uint16_t key, T val) {
+    BSON& addUint(uint16_t key, T val) {
         addKey(key);
         addUint(val);
+        return *this;
     }
     template <typename T>
-    void addUint(const Text& key, T val) {
+    BSON& addUint(const Text& key, T val) {
         addKey(key);
         addUint(val);
+        return *this;
     }
 
     // int
     template <typename T>
-    void addInt(T val) {
+    BSON& addInt(T val) {
         uint8_t neg = (val < 0) ? BS_NEGATIVE : 0;
         if (neg) val = -val;
         uint8_t len = _uintSize(val);
         push(BS_VAL_INT | neg | len);
         concat((uint8_t*)&val, len);
+        return *this;
     }
-    void addInt(long long val) {
+    BSON& addInt(long long val) {
         uint8_t neg = (val < 0) ? BS_NEGATIVE : 0;
         if (neg) val = -val;
         uint8_t len = _uint64Size(val);
         push(BS_VAL_INT | neg | len);
         concat((uint8_t*)&val, len);
+        return *this;
     }
     template <typename T>
-    void addInt(uint16_t key, T val) {
+    BSON& addInt(uint16_t key, T val) {
         addKey(key);
         addInt(val);
+        return *this;
     }
     template <typename T>
-    void addInt(const Text& key, T val) {
+    BSON& addInt(const Text& key, T val) {
         addKey(key);
         addInt(val);
+        return *this;
     }
 
     // float
     template <typename T>
-    void addFloat(T value, uint8_t dec) {
+    BSON& addFloat(T value, uint8_t dec) {
         push(BS_VAL_FLOAT | BS_LSB5(dec));
         float f = value;
         concat((uint8_t*)&f, 4);
+        return *this;
     }
     template <typename T>
-    void addFloat(uint16_t key, T value, uint8_t dec) {
+    BSON& addFloat(uint16_t key, T value, uint8_t dec) {
         addKey(key);
         addFloat(value, dec);
+        return *this;
     }
     template <typename T>
-    void addFloat(const Text& key, T value, uint8_t dec) {
+    BSON& addFloat(const Text& key, T value, uint8_t dec) {
         addKey(key);
         addFloat(value, dec);
+        return *this;
     }
 
 #define BSON_MAKE_ADD_STR(type)                \
@@ -220,38 +241,45 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     BSON_MAKE_ADD_FLOAT(double)
 
     // text
-    void addText(const Text& text) {
+    BSON& addText(const Text& text) {
         _text(text, BS_VAL_STR);
+        return *this;
     }
-    void addText(uint16_t key, const Text& text) {
+    BSON& addText(uint16_t key, const Text& text) {
         reserve(length() + text.length() + 5);
         addKey(key);
         _text(text, BS_VAL_STR);
+        return *this;
     }
-    void addText(const Text& key, const Text& text) {
+    BSON& addText(const Text& key, const Text& text) {
         addKey(key);
         _text(text, BS_VAL_STR);
+        return *this;
     }
-    void beginText(size_t len) {
+    BSON& beginText(size_t len) {
         push(BS_VAL_STR | BS_MSB5(len));
         push(BS_LSB(len));
+        return *this;
     }
 
     // bin
-    void addBin(const void* data, size_t size) {
-        if (size > BS_MAX_LEN) return;
+    BSON& addBin(const void* data, size_t size) {
+        if (size > BS_MAX_LEN) return *this;
         beginBin(size);
         write((const uint8_t*)data, size);
+        return *this;
     }
-    void addBin(const Text& key, const void* data, size_t size) {
-        if (size > BS_MAX_LEN) return;
+    BSON& addBin(const Text& key, const void* data, size_t size) {
+        if (size > BS_MAX_LEN) return *this;
         addKey(key);
         addBin(data, size);
+        return *this;
     }
-    void addBin(uint16_t key, const void* data, size_t size) {
-        if (size > BS_MAX_LEN) return;
+    BSON& addBin(uint16_t key, const void* data, size_t size) {
+        if (size > BS_MAX_LEN) return *this;
         addKey(key);
         addBin(data, size);
+        return *this;
     }
     bool beginBin(uint16_t size) {
         if (size > BS_MAX_LEN) return false;
@@ -261,37 +289,45 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     }
 
     // object
-    void beginObj() {
+    BSON& beginObj() {
         push(BS_CONTAINER | BS_CONT_OBJ | BS_CONT_OPEN);
+        return *this;
     }
-    void beginObj(uint16_t key) {
+    BSON& beginObj(uint16_t key) {
         reserve(length() + 4);
         addKey(key);
         beginObj();
+        return *this;
     }
-    void beginObj(const Text& key) {
+    BSON& beginObj(const Text& key) {
         addKey(key);
         beginObj();
+        return *this;
     }
-    void endObj() {
+    BSON& endObj() {
         push(BS_CONTAINER | BS_CONT_OBJ | BS_CONT_CLOSE);
+        return *this;
     }
 
     // array
-    void beginArr() {
+    BSON& beginArr() {
         push(BS_CONTAINER | BS_CONT_ARR | BS_CONT_OPEN);
+        return *this;
     }
-    void beginArr(uint16_t key) {
+    BSON& beginArr(uint16_t key) {
         reserve(length() + 4);
         addKey(key);
         beginArr();
+        return *this;
     }
-    void beginArr(const Text& key) {
+    BSON& beginArr(const Text& key) {
         addKey(key);
         beginArr();
+        return *this;
     }
-    void endArr() {
+    BSON& endArr() {
         push(BS_CONTAINER | BS_CONT_ARR | BS_CONT_CLOSE);
+        return *this;
     }
 
    private:
