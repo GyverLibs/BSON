@@ -3,8 +3,8 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 
-#define WIFI_SSID "AlexMain"
-#define WIFI_PASS "lolpass12345"
+#define WIFI_SSID ""
+#define WIFI_PASS ""
 
 ESP8266WebServer server;
 
@@ -13,22 +13,29 @@ const char index_html[] PROGMEM = R"raw(
 
 <body>
     <button id="req">REQUEST</button>
-    <p id="out"></p>
+    <p id="out" style="white-space: break-spaces;"></p>
 
     <script type="module">
         import decodeBson from 'https://gyverlibs.github.io/bson.js/bson.js';
+
+        const codes = [
+            'some',
+            'string',
+            'constants',
+        ];
 
         req.onclick = async () => {
             let res = await fetch(window.location.origin + '/bson');
             try {
                 let arr = new Uint8Array(await res.arrayBuffer());
-                let json = decodeBson(arr);
+                let json = decodeBson(arr, codes);
                 console.log(arr);
                 console.log(JSON.stringify(json), JSON.stringify(json).length);
                 console.log(json);
                 out.innerText = JSON.stringify(json, null, 2);
             } catch (e) {
                 console.log(e);
+                out.innerText = e;
             }
         }
     </script>
@@ -60,13 +67,25 @@ void setup() {
     });
     server.on("/bson", []() {
         BSON b;
-        b.beginObj();
+
+        b('{');
+        b("str", '{');
         b.addStr("cstring", "text");
         b.addStr("fstring", F("text"));
         b.addStr("String", String("text"));
-        
+        b('}');
+
+        enum class Const {
+            some,
+            string,
+            constants,
+        };
+        b[Const::some] = Const::string;
+        b[Const::string] = "cstring";
+        b[Const::constants] = 123;
+
         b.addBool("true", true);
-        b.addBool("false", false);
+        b["false"] = false;
 
         b.addInt("nan", NAN);
         b.addInt("inf", INFINITY);
@@ -95,7 +114,7 @@ void setup() {
         b.addFloat("float4", 3.1415, 4);
         b.addFloat("fnan", NAN, 4);
         b.addFloat("finf", INFINITY, 4);
-        b.endObj();
+        b('}');
 
         server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
         server.sendHeader(F("Access-Control-Allow-Private-Network"), F("true"));
