@@ -128,6 +128,12 @@ void endArr();
 
 ### Примеры
 ```cpp
+enum class Const {
+  some,
+  string,
+  constants,
+};
+
 BSON b;
 b('{');
 
