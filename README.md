@@ -50,9 +50,6 @@
 
 ### Описание класса
 ```cpp
-// прибавить бинарные данные
-size_t write(const uint8_t* buf, size_t len);
-
 // зарезервировать размер
 bool reserve(size_t size);
 
@@ -68,25 +65,24 @@ void clear();
 // переместить в другой объект
 void move(BSON& bson);
 
+// максимальная длина строк и бинарных данных
+static size_t maxDataLength();
+
 // данные как Text
 Text toText();
 operator Text();
 
 // bson
 void add(const BSON& bson);
-void operator+=(const BSON& bson);
 
 // key
 void addKey(uint16_t key);
 void addKey(Text key);
 
-BSON& operator[](uint16_t key);
-BSON& operator[](Text key);
-
 // code
-void addCode(uint16_t key, uint16_t val);
-void addCode(Text key, uint16_t val);
-void addCode(uint16_t val);
+void addCode(uint16_t value);
+void addCode(uint16_t key, uint16_t value);
+void addCode(Text key, uint16_t value);
 
 // bool
 void addBool(bool b);
@@ -94,14 +90,14 @@ void addBool(uint16_t key, bool b);
 void addBool(Text key, bool b);
 
 // int/uint
-void addInt(T val);
-void addInt(uint16_t key, T val);
-void addInt(Text key, T val);
+void addInt(T value);
+void addInt(uint16_t key, T value);
+void addInt(Text key, T value);
 
 // float
-void addFloat(T value, uint8_t dec);
-void addFloat(uint16_t key, T value, uint8_t dec);
-void addFloat(Text key, T value, uint8_t dec);
+void addFloat(T value, int dec = 4);
+void addFloat(uint16_t key, T value, int dec = 4);
+void addFloat(Text key, T value, int dec = 4);
 
 // text
 void addStr(Text text);
@@ -111,9 +107,11 @@ void beginStr(size_t len);
 
 // bin
 void addBin(const void* data, size_t size);
-void addBin(Text key, const void* data, size_t size);
 void addBin(uint16_t key, const void* data, size_t size);
+void addBin(Text key, const void* data, size_t size);
 bool beginBin(uint16_t size);
+// прибавить бинарные данные
+size_t write(const uint8_t* buf, size_t len);
 
 // object
 void beginObj();
@@ -130,18 +128,35 @@ void endArr();
 
 ### Примеры
 ```cpp
-BSON bs;
-bs.beginObj();
-bs.addInt("key", 123);
-bs["key2"] = 456;
+BSON b;
+b('{');
 
-bs.beginArr("arr");
-bs.addStr("str1");
-bs += F("str2");
-bs += "str3";
-bs.endArr();
+b("str", '{');
+b["cstring"] = "text";
+b["fstring"] = F("text");
+b["String"] = String("text");
+b('}');
 
-bs.endObj();
+b("const", '{');
+b[Const::some] = Const::string;
+b[Const::string] = "cstring";
+b[Const::constants] = 123;
+b('}');
+
+b("num", '{');
+b["int8"] = 123;
+b["int16"] = 12345;
+b["int32"] = -123456789;
+b('}');
+
+b("arr", '[');
+b += "str";
+b += 123;
+b += 3.14;
+b += Const::string;
+b(']');
+
+b('}');
 ```
 
 ### Распаковка

@@ -84,6 +84,13 @@ void setup() {
         b[Const::string] = "cstring";
         b[Const::constants] = 123;
 
+        b("arr", '[');
+        b += 123;
+        b += 3.14;
+        b += "str";
+        b += Const::some;
+        b(']');
+
         b.addBool("true", true);
         b["false"] = false;
 
