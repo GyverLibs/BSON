@@ -80,6 +80,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
 
     inline BSON& operator[](const Text& key) { return addKey(key); }
     inline BSON& operator[](const String& key) { return addKey(key); }
+    inline BSON& operator[](char* key) { return addKey(key); }
     inline BSON& operator[](const char* key) { return addKey(key); }
     inline BSON& operator[](const __FlashStringHelper* key) { return addKey(key); }
 
@@ -91,7 +92,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     }
 
     template <typename T>
-    inline BSON& operator[](T key) { return addKey((uint16_t)key); }
+    inline BSON& operator[](const T key) { return addKey((uint16_t)key); }
 
     // ============== val code ==============
     template <typename T1, typename T2>
@@ -112,9 +113,9 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     }
 
     template <typename T>
-    inline void operator=(T val) { addCode((uint16_t)val); }
+    inline void operator=(const T val) { addCode((uint16_t)val); }
     template <typename T>
-    inline void operator+=(T val) { addCode((uint16_t)val); }
+    inline void operator+=(const T val) { addCode((uint16_t)val); }
 
     // ============== val bool ==============
     BSON& addBool(bool b) {
@@ -236,6 +237,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     inline void operator=(T val) { addStr(val); } \
     inline void operator+=(T val) { addStr(val); }
 
+    BSON_MAKE_ADD_STR(char*)
     BSON_MAKE_ADD_STR(const char*)
     BSON_MAKE_ADD_STR(const __FlashStringHelper*)
     BSON_MAKE_ADD_STR(const String&)
@@ -294,7 +296,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     }
 
     template <typename T>
-    inline BSON& operator()(T key, char c) { return cont((uint16_t)key, c); }
+    inline BSON& operator()(const T key, char c) { return cont((uint16_t)key, c); }
 
     // ============== object ==============
     BSON& beginObj() {
