@@ -66,61 +66,63 @@ void setup() {
         server.send_P(200, "text/html", (PGM_P)index_html, strlen_P(index_html));
     });
     server.on("/bson", []() {
-        BSON b;
-
-        b('{');
-        b("str", '{');
-        b.addStr("cstring", "text");
-        b.addStr("fstring", F("text"));
-        b.addStr("String", String("text"));
-        b('}');
-
         enum class Const {
             some,
             string,
             constants,
         };
+
+        BSON b;
+
+        b('{');
+
+        if (b["str"]('{')) {
+            b["cstring"] = "text";
+            b["fstring"] = F("text");
+            b["String"] = String("text");
+            b('}');
+        }
+
         b[Const::some] = Const::string;
         b[Const::string] = "cstring";
         b[Const::constants] = 123;
 
-        b("arr", '[');
-        b += 123;
-        b += 3.14;
-        b += "str";
-        b += Const::some;
-        b(']');
+        if (b["arr"]('[')) {
+            b += 123;
+            b += 3.14;
+            b += "str";
 
-        b.addBool("true", true);
+            b('{');
+            b[Const::some] = 123;
+            b('}');
+
+            b += Const::some;
+            b(']');
+        }
+
+        b["true"].add(true);
         b["false"] = false;
 
-        b.addInt("nan", NAN);
-        b.addInt("inf", INFINITY);
-        b.addInt("int0", -0);
-        b.addInt("int8", -123);
-        b.addInt("int16", -12345);
-        b.addInt("int24", -1234567);
-        b.addInt("int32", -123456789);
-        b.addInt("int40", -1000000000000);
+        b["int0"] = (int8_t)-0;
+        b["int8"] = (int8_t)-123;
+        b["int16"] = (int16_t)-12345;
+        b["int24"] = (int32_t)-1234567;
+        b["int32"] = -123456789;
+        b["int40"] = -1234567898765;
 
-        b.addInt("uint0", 0);
-        b.addInt("uint8", 123);
-        b.addInt("uint16", 12345);
-        b.addInt("uint24", 1234567);
-        b.addInt("uint32", 123456789);
-        b.addInt("uint40", 1000000000000);
+        b["uint0"] = (uint8_t)0;
+        b["uint8"] = (uint8_t)123;
+        b["uint16"] = (uint16_t)12345;
+        b["uint24"] = (uint32_t)1234567;
+        b["uint32"] = 123456789;
+        b["uint40"] = 1234567898765;
 
-        b.addInt("uint0+", 0u);
-        b.addInt("uint8+", 123u);
-        b.addInt("uint16+", 12345u);
-        b.addInt("uint24+", 1234567u);
-        b.addInt("uint32+", 123456789u);
-        b.addInt("uint40+", 1000000000000ull);
+        b["float1"].add(3.1415, 1);
+        b["float4"].add(3.1415, 4);
+        b["fnan"].add(NAN, 4);
+        b["finf"].add(INFINITY, 4);
 
-        b.addFloat("float1", 3.1415, 1);
-        b.addFloat("float4", 3.1415, 4);
-        b.addFloat("fnan", NAN, 4);
-        b.addFloat("finf", INFINITY, 4);
+        b["bin"].add("test", 4);
         b('}');
 
         server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));

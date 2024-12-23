@@ -11,12 +11,12 @@
 - В среднем в 2-3 раза легче обычного JSON, собирается сильно быстрее
 - Поддерживает "коды": число, которое может быть ключом или значением, а при распаковке заменится на строку из списка по индексу
 - Строки не нужно экранировать
-- Поддержка целых чисел 1..7 байт
+- Поддержка целых чисел 0..8 байт
 - Поддержка float с указанием количества знаков точности
 - Поддержка JSON массивов и объектов ключ:значение
 - Поддержка упаковки произвольных бинарных данных
 - Не содержит запятых, они добавляются при распаковке
-- Лимит `8192` для всего: значение кодов, ключей, длина строки, длина бинарных данных
+- Лимит длины `8192` байт для всего: значение кодов, длина строк, длина бинарных данных
 
 ### Совместимость
 Совместима со всеми Arduino платформами (используются Arduino-функции)
@@ -35,23 +35,40 @@
 
 ## Использование
 ### Структура пакета
-```
-0 key code: [code msb:5] + [code:8]
-1 key str: [len msb:5] + [len:8] + [...]
-2 val code: [code msb:5] + [code:8]
-3 val str: [len msb:5] + [len:8] + [...]
-4 val int: [sign:1 + bool:1 + len:3] + [...]
-5 val float: [dec:5] + [...]
-6 cont: [obj:1 / arr:0] + [open:1 / close:0]
-7 bin: [len msb:5] + [len:8] + [...]
-```
-
 ![bson](/docs/bson.png)
 
 ### Описание класса
 ```cpp
+// прибавить данные любого типа
+BSON& add(T data);
+void operator=(T data);
+void operator+=(T data);
+
+// float
+BSON& add(float data, int dec);
+BSON& add(double data, int dec);
+
+// ключ
+BSON& operator[](T key);
+
+// контейнер, всегда вернёт true. type: '{', '[', '}', ']'
+bool operator()(char type);
+
+// бинарные данные
+bool beginBin(uint16_t size);
+BSON& add(const void* data, size_t size, bool pgm = false);
+
+// строки
+BSON& beginStr(size_t len);
+
 // зарезервировать размер
 bool reserve(size_t size);
+
+// зарезервировать, элементов (добавить к текущему размеру буфера)
+bool addCapacity(size_t size);
+
+// установить увеличение размера для уменьшения количества мелких реаллокаций. Умолч. 8
+void setOversize(uint16_t oversize);
 
 // размер в байтах
 size_t length();
@@ -68,99 +85,50 @@ void move(BSON& bson);
 // максимальная длина строк и бинарных данных
 static size_t maxDataLength();
 
-// данные как Text
+// как Text
 Text toText();
 operator Text();
-
-// bson
-void add(const BSON& bson);
-
-// key
-void addKey(uint16_t key);
-void addKey(Text key);
-
-// code
-void addCode(uint16_t value);
-void addCode(uint16_t key, uint16_t value);
-void addCode(Text key, uint16_t value);
-
-// bool
-void addBool(bool b);
-void addBool(uint16_t key, bool b);
-void addBool(Text key, bool b);
-
-// int/uint
-void addInt(T value);
-void addInt(uint16_t key, T value);
-void addInt(Text key, T value);
-
-// float
-void addFloat(T value, int dec = 4);
-void addFloat(uint16_t key, T value, int dec = 4);
-void addFloat(Text key, T value, int dec = 4);
-
-// text
-void addStr(Text text);
-void addStr(uint16_t key, Text text);
-void addStr(Text key, Text text);
-void beginStr(size_t len);
-
-// bin
-void addBin(const void* data, size_t size);
-void addBin(uint16_t key, const void* data, size_t size);
-void addBin(Text key, const void* data, size_t size);
-bool beginBin(uint16_t size);
-// прибавить бинарные данные
-size_t write(const uint8_t* buf, size_t len);
-
-// object
-void beginObj();
-void beginObj(uint16_t key);
-void beginObj(Text key);
-void endObj();
-
-// array
-void beginArr();
-void beginArr(uint16_t key);
-void beginArr(Text key);
-void endArr();
 ```
 
-### Примеры
+### Пример
 ```cpp
 enum class Const {
-  some,
-  string,
-  constants,
+    some,
+    string,
+    constants,
 };
 
 BSON b;
 b('{');
 
-b("str", '{');
-b["cstring"] = "text";
-b["fstring"] = F("text");
-b["String"] = String("text");
-b('}');
+if (b["str"]('{')) {
+    b["cstring"] = "text";
+    b["fstring"] = F("text");
+    b["String"] = String("text");
+    b('}');
+}
 
-b("const", '{');
-b[Const::some] = Const::string;
-b[Const::string] = "cstring";
-b[Const::constants] = 123;
-b('}');
+if (b[Const::constants]('{')) {
+    b[Const::some] = Const::string;
+    b[Const::string] = "cstring";
+    b[Const::constants] = 123;
+    b('}');
+}
 
-b("num", '{');
-b["int8"] = 123;
-b["int16"] = 12345;
-b["int32"] = -123456789;
-b('}');
+if (b["num"]('{')) {
+    b["int8"] = 123;
+    b["int16"] = 12345;
+    b["int32"] = -123456789;
+    b('}');
+}
 
-b("arr", '[');
-b += "str";
-b += 123;
-b += 3.14;
-b += Const::string;
-b(']');
+if (b["arr"]('[')) {
+    b += "str";
+    b += 123;
+    b += 3.14;
+    b += Const::string;
+    b(']');
+}
 
 b('}');
 ```
@@ -173,7 +141,7 @@ b('}');
 <a id="versions"></a>
 
 ## Версии
-- v1.0
+- v2.0.0
 
 <a id="install"></a>
 ## Установка
