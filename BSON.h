@@ -191,6 +191,10 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     BSON_MAKE_ADD_STR(const String&)
     // BSON_MAKE_ADD_STR(const StringSumHelper&)
 
+    BSON& add(const StringSumHelper&) = delete;
+    inline void operator=(const StringSumHelper&) = delete;
+    inline void operator+=(const StringSumHelper&) = delete;
+
     // ============== val bin ==============
     bool beginBin(uint16_t size) {
         if (size > BS_MAX_LEN) return false;
