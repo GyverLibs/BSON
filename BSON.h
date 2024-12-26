@@ -189,6 +189,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     BSON_MAKE_ADD_STR(const char*)
     BSON_MAKE_ADD_STR(const __FlashStringHelper*)
     BSON_MAKE_ADD_STR(const String&)
+    BSON_MAKE_ADD_STR(const StringSumHelper&)
 
     // ============== val bin ==============
     bool beginBin(uint16_t size) {
