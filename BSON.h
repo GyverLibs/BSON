@@ -1,8 +1,8 @@
 #pragma once
 #include <Arduino.h>
+#include <GTL.h>
 #include <StringUtils.h>
 #include <limits.h>
-#include <stack/stack.h>
 
 // ============== const ==============
 #define BS_MAX_LEN ((size_t)0b0001111111111111)
@@ -39,25 +39,27 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     using gtl::stack_uniq<uint8_t>::clear;
     using gtl::stack_uniq<uint8_t>::move;
 
-    BSON() {}
-    BSON(BSON& b) {
-        move(b);
-    }
-    BSON(BSON&& b) {
-        move(b);
-    }
-    BSON& operator=(BSON& b) {
-        move(b);
-        return *this;
-    }
-    BSON& operator=(BSON&& b) {
-        move(b);
-        return *this;
-    }
-
     // максимальная длина строк и бинарных данных
     static size_t maxDataLength() {
         return BS_MAX_LEN;
+    }
+
+    // размер числа в байтах
+    static uint8_t uint32Size(uint8_t* p) {
+        if (p[3]) return 4;
+        if (p[2]) return 3;
+        if (p[1]) return 2;
+        if (p[0]) return 1;
+        return 0;
+    }
+
+    // размер числа в байтах
+    static uint8_t uint64Size(uint8_t* p) {
+        if (p[7]) return 8;
+        if (p[6]) return 7;
+        if (p[5]) return 6;
+        if (p[4]) return 5;
+        return uint32Size(p);
     }
 
     operator Text() {
@@ -153,7 +155,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     // ============== val float ==============
     BSON& add(float value, int dec) {
         push(BS_FLOAT | BS_LSB5(dec));
-        concat((const uint8_t*)&value, 4);
+        write(&value, 4);
         return *this;
     }
     BSON& add(double value, int dec) {
@@ -174,7 +176,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     BSON& add(const Text& text) {
         uint16_t len = min((size_t)text.length(), BS_MAX_LEN);
         beginStr(len);
-        concat((const uint8_t*)text.str(), len, text.pgm());
+        write(text.str(), len, text.pgm());
         return *this;
     }
     inline void operator=(const Text& val) { add(val); }
@@ -203,7 +205,7 @@ class BSON : private gtl::stack_uniq<uint8_t> {
         return true;
     }
     BSON& add(const void* data, size_t size, bool pgm = false) {
-        if (beginBin(size)) concat((const uint8_t*)data, size, pgm);
+        if (beginBin(size)) write(data, size, pgm);
         return *this;
     }
 
@@ -221,30 +223,15 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     // ============== private ==============
    private:
     BSON& _int32(void* p, bool neg = false) {
-        uint8_t len = _uint32Size((uint8_t*)p);
+        uint8_t len = uint32Size((uint8_t*)p);
         push(BS_INTEGER | (neg ? BS_NEGATIVE : 0) | len);
-        concat((const uint8_t*)p, len);
+        write(p, len);
         return *this;
     }
     BSON& _int64(void* p, bool neg = false) {
-        uint8_t len = _uint64Size((uint8_t*)p);
+        uint8_t len = uint64Size((uint8_t*)p);
         push(BS_INTEGER | (neg ? BS_NEGATIVE : 0) | len);
-        concat((const uint8_t*)p, len);
+        write(p, len);
         return *this;
-    }
-
-    uint8_t _uint32Size(uint8_t* p) {
-        if (p[3]) return 4;
-        if (p[2]) return 3;
-        if (p[1]) return 2;
-        if (p[0]) return 1;
-        return 0;
-    }
-    uint8_t _uint64Size(uint8_t* p) {
-        if (p[7]) return 8;
-        if (p[6]) return 7;
-        if (p[5]) return 6;
-        if (p[4]) return 5;
-        return _uint32Size(p);
     }
 };
