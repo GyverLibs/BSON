@@ -39,6 +39,22 @@ class BSON : private gtl::stack_uniq<uint8_t> {
     using gtl::stack_uniq<uint8_t>::clear;
     using gtl::stack_uniq<uint8_t>::move;
 
+    BSON() {}
+    BSON(BSON& b) {
+        move(b);
+    }
+    BSON(BSON&& b) {
+        move(b);
+    }
+    BSON& operator=(BSON& b) {
+        move(b);
+        return *this;
+    }
+    BSON& operator=(BSON&& b) {
+        move(b);
+        return *this;
+    }
+
     // максимальная длина строк и бинарных данных
     static size_t maxDataLength() {
         return BS_MAX_LEN;
