@@ -1,8 +1,8 @@
 #pragma once
 #include <Arduino.h>
-#include <GTL.h>
 #include <StringUtils.h>
 #include <limits.h>
+#include <GTL.h>
 
 // ============== const ==============
 #define BS_MAX_LEN ((size_t)0b0001111111111111)
@@ -27,33 +27,19 @@
 #define BS_LSB(x) ((x) & 0xff)
 
 // ============== class ==============
-class BSON : private gtl::stack_uniq<uint8_t> {
-   public:
-    using gtl::stack_uniq<uint8_t>::write;
-    using gtl::stack_uniq<uint8_t>::concat;
-    using gtl::stack_uniq<uint8_t>::reserve;
-    using gtl::stack_uniq<uint8_t>::addCapacity;
-    using gtl::stack_uniq<uint8_t>::setOversize;
-    using gtl::stack_uniq<uint8_t>::length;
-    using gtl::stack_uniq<uint8_t>::buf;
-    using gtl::stack_uniq<uint8_t>::clear;
-    using gtl::stack_uniq<uint8_t>::move;
+class BSON : private gtl::stack<uint8_t> {
+    typedef gtl::stack<uint8_t> ST;
 
-    BSON() {}
-    BSON(BSON& b) {
-        move(b);
-    }
-    BSON(BSON&& b) {
-        move(b);
-    }
-    BSON& operator=(BSON& b) {
-        move(b);
-        return *this;
-    }
-    BSON& operator=(BSON&& b) {
-        move(b);
-        return *this;
-    }
+   public:
+    using ST::addCapacity;
+    using ST::buf;
+    using ST::clear;
+    using ST::concat;
+    using ST::length;
+    using ST::move;
+    using ST::reserve;
+    using ST::setOversize;
+    using ST::write;
 
     // максимальная длина строк и бинарных данных
     static size_t maxDataLength() {
