@@ -1,8 +1,11 @@
 #pragma once
 #include <Arduino.h>
-#include <StringUtils.h>
-#include <limits.h>
 #include <GTL.h>
+#include <limits.h>
+
+#ifndef BSON_NO_TEXT
+#include <StringUtils.h>
+#endif
 
 // ============== const ==============
 #define BS_MAX_LEN ((size_t)0b0001111111111111)
@@ -62,14 +65,6 @@ class BSON : private gtl::stack<uint8_t> {
         if (p[5]) return 6;
         if (p[4]) return 5;
         return uint32Size(p);
-    }
-
-    operator Text() {
-        return toText();
-    }
-
-    Text toText() {
-        return Text(buf(), length());
     }
 
     // ============== add bson ==============
@@ -175,25 +170,44 @@ class BSON : private gtl::stack<uint8_t> {
         push(BS_LSB(len));
         return *this;
     }
-    BSON& add(const Text& text) {
-        uint16_t len = min((size_t)text.length(), BS_MAX_LEN);
+    BSON& add(const char* str, size_t len, bool pgm = false) {
+        if (len > BS_MAX_LEN) len = BS_MAX_LEN;
         beginStr(len);
-        write(text.str(), len, text.pgm());
+        write(str, len, pgm);
         return *this;
     }
-    inline void operator=(const Text& val) { add(val); }
-    inline void operator+=(const Text& val) { add(val); }
 
-#define BSON_MAKE_ADD_STR(T)                         \
-    BSON& add(T val) { return add(Text(val)); }      \
-    inline void operator=(T val) { add(Text(val)); } \
-    inline void operator+=(T val) { add(Text(val)); }
+    inline BSON& add(char* str) {
+        return add((const char*)str);
+    }
+    inline void operator=(char* str) { add(str); }
+    inline void operator+=(char* str) { add(str); }
 
-    BSON_MAKE_ADD_STR(char*)
-    BSON_MAKE_ADD_STR(const char*)
-    BSON_MAKE_ADD_STR(const __FlashStringHelper*)
-    BSON_MAKE_ADD_STR(const String&)
-    // BSON_MAKE_ADD_STR(const StringSumHelper&)
+    BSON& add(const char* str) {
+        return add(str, strlen(str), false);
+    }
+    inline void operator=(const char* str) { add(str); }
+    inline void operator+=(const char* str) { add(str); }
+
+    BSON& add(const String& str) {
+        return add(str.c_str(), str.length(), false);
+    }
+    inline void operator=(const String& str) { add(str); }
+    inline void operator+=(const String& str) { add(str); }
+
+    BSON& add(const __FlashStringHelper* str) {
+        return add((const char*)str, strlen_P((PGM_P)str), true);
+    }
+    inline void operator=(const __FlashStringHelper* str) { add(str); }
+    inline void operator+=(const __FlashStringHelper* str) { add(str); }
+
+#ifndef BSON_NO_TEXT
+    BSON& add(const Text& str) {
+        return add(str.str(), str.length(), str.pgm());
+    }
+    inline void operator=(const Text& str) { add(str); }
+    inline void operator+=(const Text& str) { add(str); }
+#endif
 
     BSON& add(const StringSumHelper&) = delete;
     inline void operator=(const StringSumHelper&) = delete;
