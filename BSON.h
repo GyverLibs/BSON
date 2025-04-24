@@ -180,26 +180,24 @@ class BSON : private gtl::stack<uint8_t> {
     inline BSON& add(char* str) {
         return add((const char*)str);
     }
-    inline void operator=(char* str) { add(str); }
-    inline void operator+=(char* str) { add(str); }
-
     BSON& add(const char* str) {
         return add(str, strlen(str), false);
     }
-    inline void operator=(const char* str) { add(str); }
-    inline void operator+=(const char* str) { add(str); }
-
     BSON& add(const String& str) {
         return add(str.c_str(), str.length(), false);
     }
-    inline void operator=(const String& str) { add(str); }
-    inline void operator+=(const String& str) { add(str); }
-
     BSON& add(const __FlashStringHelper* str) {
         return add((const char*)str, strlen_P((PGM_P)str), true);
     }
-    inline void operator=(const __FlashStringHelper* str) { add(str); }
-    inline void operator+=(const __FlashStringHelper* str) { add(str); }
+
+#define BSON_MAKE_ADD_STR(T)                   \
+    inline void operator=(T val) { add(val); } \
+    inline void operator+=(T val) { add(val); }
+
+    BSON_MAKE_ADD_STR(char*)
+    BSON_MAKE_ADD_STR(const char*)
+    BSON_MAKE_ADD_STR(const String&)
+    BSON_MAKE_ADD_STR(const __FlashStringHelper*)
 
 #ifndef BSON_NO_TEXT
     BSON& add(const Text& str) {
