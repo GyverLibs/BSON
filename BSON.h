@@ -1,9 +1,8 @@
 #pragma once
-#include <Arduino.h>
 #include <GTL.h>
 #include <limits.h>
 
-#ifndef BSON_NO_TEXT
+#if defined(ARDUINO) && !defined(BSON_NO_TEXT)
 #include <StringUtils.h>
 #endif
 
@@ -19,15 +18,68 @@
 #define BS_CONTAINER (6 << 5)
 
 #define BS_CONT_OBJ (1 << 4)
-#define BS_CONT_ARR (0 << 4)
 #define BS_CONT_OPEN (1 << 3)
-#define BS_CONT_CLOSE (0 << 3)
+#define BS_CONT_ARR (1 << 2)
+#define BS_CONT_CLOSE (1 << 1)
 
 #define BS_NEGATIVE (1 << 4)
 
+// ============== helper ==============
 #define BS_LSB5(x) ((x) & 0b00011111)
 #define BS_MSB5(x) BS_LSB5((x) >> 8)
 #define BS_LSB(x) ((x) & 0xff)
+#define BS_UNPACK5(msb5, lsb) ((msb5 << 8) | lsb)
+
+#define _BSON_INTx(val, len) (BS_INTEGER | (val < 0 ? BS_NEGATIVE : 0) | len)
+#define _BSON_BYTEx(val, n) ((val < 0 ? -val : val) >> (n * 8)) & 0xff
+inline uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
+
+#define _BS_STR_N1(str) str[0]
+#define _BS_STR_N2(str) _BS_STR_N1(str), str[1]
+#define _BS_STR_N3(str) _BS_STR_N2(str), str[2]
+#define _BS_STR_N4(str) _BS_STR_N3(str), str[3]
+#define _BS_STR_N5(str) _BS_STR_N4(str), str[4]
+#define _BS_STR_N6(str) _BS_STR_N5(str), str[5]
+#define _BS_STR_N7(str) _BS_STR_N6(str), str[6]
+#define _BS_STR_N8(str) _BS_STR_N7(str), str[7]
+#define _BS_STR_N9(str) _BS_STR_N8(str), str[8]
+#define _BS_STR_N10(str) _BS_STR_N9(str), str[9]
+#define _BS_STR_N11(str) _BS_STR_N10(str), str[10]
+#define _BS_STR_N12(str) _BS_STR_N11(str), str[11]
+#define _BS_STR_N13(str) _BS_STR_N12(str), str[12]
+#define _BS_STR_N14(str) _BS_STR_N13(str), str[13]
+#define _BS_STR_N15(str) _BS_STR_N14(str), str[14]
+#define _BS_STR_N16(str) _BS_STR_N15(str), str[15]
+#define _BS_STR_N17(str) _BS_STR_N16(str), str[16]
+#define _BS_STR_N18(str) _BS_STR_N17(str), str[17]
+#define _BS_STR_N19(str) _BS_STR_N18(str), str[18]
+#define _BS_STR_N20(str) _BS_STR_N19(str), str[19]
+#define _BS_STR_N21(str) _BS_STR_N20(str), str[20]
+#define _BS_STR_N22(str) _BS_STR_N21(str), str[21]
+#define _BS_STR_N23(str) _BS_STR_N22(str), str[22]
+#define _BS_STR_N24(str) _BS_STR_N23(str), str[23]
+#define _BS_STR_N25(str) _BS_STR_N24(str), str[24]
+#define _BS_STR_N26(str) _BS_STR_N25(str), str[25]
+#define _BS_STR_N27(str) _BS_STR_N26(str), str[26]
+#define _BS_STR_N28(str) _BS_STR_N27(str), str[27]
+#define _BS_STR_N29(str) _BS_STR_N28(str), str[28]
+#define _BS_STR_N30(str) _BS_STR_N29(str), str[29]
+#define _BS_STR_N31(str) _BS_STR_N30(str), str[30]
+#define _BS_STR_N32(str) _BS_STR_N31(str), str[31]
+#define _BS_STR_N33(str) _BS_STR_N32(str), str[32]
+
+// ============== STATIC ==============
+inline constexpr uint8_t BSON_CONT(char t) { return t == '{' ? (BS_CONTAINER | BS_CONT_OBJ | BS_CONT_OPEN) : (t == '}' ? (BS_CONTAINER | BS_CONT_OBJ | BS_CONT_CLOSE) : (t == '[' ? (BS_CONTAINER | BS_CONT_ARR | BS_CONT_OPEN) : (BS_CONTAINER | BS_CONT_ARR | BS_CONT_CLOSE))); }
+#define BSON_CODE(code) (BS_CODE | BS_MSB5((uint16_t)code)), BS_LSB((uint16_t)code)
+#define BSON_FLOAT(val) (BS_FLOAT | 4), _BSON_FLOATx(val, 0), _BSON_FLOATx(val, 1), _BSON_FLOATx(val, 2), _BSON_FLOATx(val, 3)
+#define BSON_INT8(val) _BSON_INTx(val, 1), _BSON_BYTEx(val, 0)
+#define BSON_INT16(val) _BSON_INTx(val, 2), _BSON_BYTEx(val, 0), _BSON_BYTEx(val, 1)
+#define BSON_INT24(val) _BSON_INTx(val, 3), _BSON_BYTEx(val, 0), _BSON_BYTEx(val, 1), _BSON_BYTEx(val, 2)
+#define BSON_INT32(val) _BSON_INTx(val, 4), _BSON_BYTEx(val, 0), _BSON_BYTEx(val, 1), _BSON_BYTEx(val, 2), _BSON_BYTEx(val, 3)
+#define BSON_INT64(val) _BSON_INTx(val, 8), _BSON_BYTEx(val, 0), _BSON_BYTEx(val, 1), _BSON_BYTEx(val, 2), _BSON_BYTEx(val, 3), _BSON_BYTEx(val, 4), _BSON_BYTEx(val, 5), _BSON_BYTEx(val, 6), _BSON_BYTEx(val, 7)
+#define BSON_BOOL(val) (BS_BOOLEAN | val)
+#define BSON_STR(str, len) BS_STRING | BS_MSB5(len), BS_LSB(len), _BS_STR_N##len(str)
+#define BSON_KEY(str, len) BSON_STR(str, len)
 
 // ============== class ==============
 class BSON : private gtl::stack<uint8_t> {
@@ -43,11 +95,111 @@ class BSON : private gtl::stack<uint8_t> {
     using ST::reserve;
     using ST::setOversize;
     using ST::write;
+    using ST::operator uint8_t*;
 
     // максимальная длина строк и бинарных данных
     static size_t maxDataLength() {
         return BS_MAX_LEN;
     }
+
+#ifdef ARDUINO
+    // вывести в Print как JSON
+    static void stringify(BSON& bson, Print& p, bool pretty = false) {
+        stringify(bson, bson.length(), p, pretty);
+    }
+
+    // вывести в Print как JSON
+    static void stringify(const uint8_t* bson, size_t len, Print& p, bool pretty = false) {
+        const uint8_t* end = bson + len;
+        gtl::stack<uint8_t> stack;
+        bool keyf = true;
+
+        auto isClose = [](const uint8_t* bson, const uint8_t* end) -> bool {
+            return bson != end && (*bson & (BS_CONTAINER | BS_CONT_CLOSE)) == (BS_CONTAINER | BS_CONT_CLOSE);
+        };
+
+        while (bson != end) {
+            uint8_t type = *bson & 0b11100000;
+            uint8_t data = *bson & 0b00011111;
+
+            if (pretty && keyf) {
+                bool close = isClose(bson, end);
+                if (close) p.println();
+                for (int i = 0; i < (int)stack.length() - close; i++) p.print("   ");
+            }
+
+            ++bson;
+
+            switch (type) {
+                case BS_CONTAINER:
+                    if (data & BS_CONT_OPEN) {
+                        char t = (data & BS_CONT_OBJ) ? '{' : '[';
+                        stack.push(t);
+                        p.print(t);
+                        if (pretty) p.println();
+                    } else {
+                        char t = (data & BS_CONT_OBJ) ? '}' : ']';
+                        p.print(t);
+                        if (bson != end && !(*bson & (BS_CONTAINER | BS_CONT_CLOSE))) pretty ? p.print(",\r\n") : p.print(',');
+                        stack.pop();
+                    }
+                    keyf = true;
+                    continue;
+
+                case BS_STRING: {
+                    uint16_t len = BS_UNPACK5(data, *bson++);
+                    p.print('"');
+                    while (len--) p.write(*bson++);
+                    p.print('"');
+                } break;
+
+                case BS_BOOLEAN:
+                    p.print((data & 0b1) ? "true" : "false");
+                    break;
+
+                case BS_INTEGER: {
+                    if (data & BS_NEGATIVE) p.print('-');
+                    uint16_t len = data & 0b1111;
+                    uint32_t v = 0;
+                    for (uint8_t i = 0; i < len; i++) {
+                        ((uint8_t*)&v)[i] = *bson++;
+                    }
+                    p.print(v);
+                } break;
+
+                case BS_FLOAT: {
+                    float v;
+                    memcpy(&v, bson, 4);
+                    bson += 4;
+                    p.print(v, data);
+                } break;
+
+                case BS_CODE:
+                    p.print("\"#");
+                    p.print(BS_UNPACK5(data, *bson++));
+                    p.print('"');
+                    break;
+
+                case BS_BINARY: {
+                    uint16_t len = BS_UNPACK5(data, *bson++);
+                    bson += len;
+                    p.print("\"<bin:");
+                    p.print(len);
+                    p.print(">\"");
+                } break;
+            }
+
+            if (stack.last() == '{') {
+                if (keyf) p.print(':');
+                else if (!isClose(bson, end)) pretty ? p.print(",\r\n") : p.print(',');
+                keyf ^= 1;
+            } else {
+                if (!isClose(bson, end)) pretty ? p.print(",\r\n") : p.print(',');
+            }
+        }
+        p.println();
+    }
+#endif
 
     // размер числа в байтах
     static uint8_t uint32Size(uint8_t* p) {
@@ -183,12 +335,15 @@ class BSON : private gtl::stack<uint8_t> {
     BSON& add(const char* str) {
         return add(str, strlen(str), false);
     }
+
+#ifdef ARDUINO
     BSON& add(const String& str) {
         return add(str.c_str(), str.length(), false);
     }
     BSON& add(const __FlashStringHelper* str) {
         return add((const char*)str, strlen_P((PGM_P)str), true);
     }
+#endif
 
 #define BSON_MAKE_ADD_STR(T)                   \
     inline void operator=(T val) { add(val); } \
@@ -196,10 +351,12 @@ class BSON : private gtl::stack<uint8_t> {
 
     BSON_MAKE_ADD_STR(char*)
     BSON_MAKE_ADD_STR(const char*)
+#ifdef ARDUINO
     BSON_MAKE_ADD_STR(const String&)
     BSON_MAKE_ADD_STR(const __FlashStringHelper*)
+#endif
 
-#ifndef BSON_NO_TEXT
+#if defined(ARDUINO) && !defined(BSON_NO_TEXT)
     BSON& add(const Text& str) {
         return add(str.str(), str.length(), str.pgm());
     }
@@ -207,10 +364,11 @@ class BSON : private gtl::stack<uint8_t> {
     inline void operator+=(const Text& str) { add(str); }
 #endif
 
+#ifdef ARDUINO
     BSON& add(const StringSumHelper&) = delete;
     inline void operator=(const StringSumHelper&) = delete;
     inline void operator+=(const StringSumHelper&) = delete;
-
+#endif
     // ============== val bin ==============
     bool beginBin(uint16_t size) {
         if (size > BS_MAX_LEN) return false;

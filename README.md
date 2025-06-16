@@ -83,15 +83,35 @@ void clear();
 // переместить в другой объект
 void move(BSON& bson);
 
+// STATIC
+
 // максимальная длина строк и бинарных данных
 static size_t maxDataLength();
 
-// как Text
-Text toText();
-operator Text();
+// вывести в Print как JSON
+static void stringify(BSON& bson, Print& p, bool pretty = false);
+
+// вывести в Print как JSON
+static void stringify(const uint8_t* bson, size_t len, Print& p, bool pretty = false);
 ```
 
-### Пример
+### Статическая сборка
+```cpp
+BSON_CONT(char t)   // контейнер '{', '}', '[', ']'
+BSON_CODE(code)     // код
+BSON_FLOAT(val)     // float
+BSON_INT8(val)      // int8
+BSON_INT16(val)     // int16
+BSON_INT24(val)     // int24
+BSON_INT32(val)     // int32
+BSON_INT64(val)     // int64
+BSON_BOOL(val)      // bool
+BSON_STR(str, len)  // "string" + длина
+BSON_KEY(str, len)  // "string" + длина
+```
+
+## Пример
+### Динамическая сборка
 ```cpp
 enum class Const {
     some,
@@ -132,6 +152,34 @@ if (b["arr"]('[')) {
 }
 
 b('}');
+```
+
+### Статическая сборка
+```cpp
+uint8_t bson[] = {
+    BSON_CONT('{'),
+    BSON_KEY("str", 3),
+    BSON_STR("hello", 5),
+
+    BSON_KEY("int", 3),
+    BSON_INT16(12345),
+
+    BSON_KEY("arr", 3),
+    BSON_CONT('['),
+    BSON_STR("string", 6),
+    BSON_CODE(12),
+    BSON_INT8(123),
+    BSON_INT8(-123),
+    BSON_INT16(12345),
+    BSON_INT16(-12345),
+    BSON_INT32(12345678),
+    BSON_INT32(-12345678),
+    // BSON_FLOAT(3.1415),
+    BSON_BOOL(true),
+    BSON_CONT(']'),
+
+    BSON_CONT('}'),
+};
 ```
 
 ### Распаковка
