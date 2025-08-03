@@ -38,7 +38,7 @@
 ### Структура пакета
 ![bson](/docs/bson.png)
 
-### Описание класса
+### Динамическая сборка, BSON
 ```cpp
 // прибавить данные любого типа
 BSON& add(T data);
@@ -108,6 +108,62 @@ BSON_INT64(val)     // int64
 BSON_BOOL(val)      // bool
 BSON_STR(str, len)  // "string" + длина
 BSON_KEY(str, len)  // "string" + длина
+```
+
+### Линейный парсер BSON::Parser
+```cpp
+enum class BSType {
+    String,
+    Boolean,
+    Integer,
+    Float,
+    Code,
+    Binary,
+    ObjectOpen,
+    ObjectClose,
+    ArrayOpen,
+    ArrayClose,
+};
+```
+```cpp
+Parser(uint8_t* bson, uint16_t len);
+
+// получить тип блока
+BSType getType();
+
+// длина в байтах [String, Binary]
+uint16_t length();
+
+// в указатель на строку [String], длина length()
+const char* toStr();
+
+bool toStr(char* str, bool terminate = true);
+
+// в указатель на тип [Binary], длина length()
+template <typename T>
+T* toBin();
+
+template <typename T>
+bool toBin(T* to);
+
+// в код [Code]
+template <typename T>
+T toCode();
+
+// в bool [Boolean]
+bool toBool();
+
+// в int [Integer]
+int32_t toInt();
+
+// в uint [Integer]
+uint32_t toUint();
+
+// в float [Float]
+float toFloat();
+
+// парсить следующий блок. Вернёт true при успехе
+bool next();
 ```
 
 ## Пример
