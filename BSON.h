@@ -374,6 +374,12 @@ class BSON : private gtl::stack<uint8_t> {
     }
     inline void operator=(const Text& str) { add(str); }
     inline void operator+=(const Text& str) { add(str); }
+
+    BSON& add(const Value& str) {
+        return add((Text)str);
+    }
+    inline void operator=(const Value& str) { add(str); }
+    inline void operator+=(const Value& str) { add(str); }
 #endif
 
 #ifdef ARDUINO
