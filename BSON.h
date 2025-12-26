@@ -257,7 +257,7 @@ class BSON : private gtl::stack<uint8_t> {
 
     // ============== val bool ==============
     BSON& add(bool b) {
-        push(BS_BOOLEAN | b);
+        push(BS_BOOLEAN | (b ? 1 : 0));
         return *this;
     }
     inline void operator=(bool val) { add(val); }
