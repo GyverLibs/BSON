@@ -30,6 +30,10 @@ void setup() {
     Serial.begin(115200);
     Serial.println("start");
 
+    // BSON b;
+    // b.concat(bson_st, sizeof(bson_st));
+    // b.stringify(Serial);
+
     BSON::Parser p(bson_st, sizeof(bson_st));
 
     while (p.next()) {
