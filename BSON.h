@@ -1,14 +1,11 @@
 #pragma once
 #include <GTL.h>
-#include <limits.h>
 
 #if defined(ARDUINO) && !defined(BSON_NO_TEXT)
 #include <StringUtils.h>
 #endif
 
-// ============== const ==============
-#define BS_MAX_LEN 0b0001111111111111u
-
+// ============== TYPES ==============
 #define BS_STRING (0 << 5)
 #define BS_BOOLEAN (1 << 5)
 #define BS_INTEGER (2 << 5)
@@ -28,7 +25,9 @@
 #define BS_ARR_OPEN (BS_CONTAINER | BS_CONT_ARR | BS_CONT_OPEN)
 #define BS_ARR_CLOSE (BS_CONTAINER | BS_CONT_ARR | BS_CONT_CLOSE)
 
-// ============== macro ==============
+// ============== MACRO ==============
+#define BS_MAX_LEN 0b0001111111111111u
+
 #define BS_TYPE_MASK 0b11100000
 #define BS_TYPE(x) ((x) & BS_TYPE_MASK)
 
@@ -51,7 +50,7 @@
 #define BS_D16_LSB(x) (uint16_t(x) & 0xff)
 #define BS_D16_MERGE(msb5, lsb) ((msb5 << 8) | lsb)
 
-// ============== static ==============
+// ============== static macro ==============
 #define _BSON_INTx(val, len) (BS_INTEGER | (val < 0 ? BS_NEG_MASK : 0) | len)
 #define _BSON_BYTEx(val, n) (((val < 0 ? -val : val) >> (n * 8)) & 0xff)
 
@@ -62,7 +61,7 @@ union _BS_FB {
 inline constexpr uint8_t _BSON_FLOATx(float v, uint8_t n) {
     return _BS_FB{v}.b[n];
 }
-// inline uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
+// uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
 
 #define _BS_STR_N1(str) str[0]
 #define _BS_STR_N2(str) _BS_STR_N1(str), str[1]
@@ -98,7 +97,7 @@ inline constexpr uint8_t _BSON_FLOATx(float v, uint8_t n) {
 #define _BS_STR_N32(str) _BS_STR_N31(str), str[31]
 #define _BS_STR_N33(str) _BS_STR_N32(str), str[32]
 
-// ============== STATIC ==============
+// =========== STATIC BUILD ==========
 inline constexpr uint8_t BSON_CONT(char t) { return t == '{' ? BS_OBJ_OPEN : (t == '}' ? BS_OBJ_CLOSE : (t == '[' ? BS_ARR_OPEN : BS_ARR_CLOSE)); }
 #define BSON_CODE(code) (BS_CODE | BS_D16_MSB(code)), BS_D16_LSB(code)
 #define BSON_FLOAT(val) (BS_FLOAT | 4), _BSON_FLOATx(val, 0), _BSON_FLOATx(val, 1), _BSON_FLOATx(val, 2), _BSON_FLOATx(val, 3)
@@ -110,10 +109,15 @@ inline constexpr uint8_t BSON_CONT(char t) { return t == '{' ? BS_OBJ_OPEN : (t 
 #define BSON_BOOL(val) (BS_BOOLEAN | BS_BOOLV(val))
 #define BSON_STR(str, len) BS_STRING | BS_D16_MSB(len), BS_D16_LSB(len), _BS_STR_N##len(str)
 #define BSON_KEY(str, len) BSON_STR(str, len)
+#define BSON_NULL() BS_NULL
 
 // ============== BSON ==============
 class BSON : private gtl::stack<uint8_t> {
     typedef gtl::stack<uint8_t> ST;
+
+#define BSON_MAKE_ADD(T)                \
+    void operator=(T val) { add(val); } \
+    void operator+=(T val) { add(val); }
 
    public:
     using ST::addCapacity;
@@ -129,11 +133,167 @@ class BSON : private gtl::stack<uint8_t> {
 
     class Parser;
 
+    // ================ static ================
     // максимальная длина строк и бинарных данных
     static size_t maxDataLength() {
         return BS_MAX_LEN;
     }
 
+    // размер числа в байтах
+    static uint8_t uintSize(const uint8_t* p, uint8_t size) {
+        switch (size) {
+            case 8:
+                if (p[7]) return 8;
+                if (p[6]) return 7;
+                if (p[5]) return 6;
+                if (p[4]) return 5;
+
+            case 4:
+                if (p[3]) return 4;
+                if (p[2]) return 3;
+
+            case 2:
+                if (p[1]) return 2;
+
+            case 1:
+                if (p[0]) return 1;
+        }
+        return 0;
+    }
+
+    // ============== add bson ==============
+    BSON& add(const BSON& bson) {
+        concat(bson);
+        return *this;
+    }
+    void operator+=(const BSON& bson) { add(bson); }
+
+    // ============== container ==============
+    // [ ] { }, всегда вернёт true
+    bool operator()(char type) {
+        switch (type) {
+            case '[': push(BS_ARR_OPEN); break;
+            case ']': push(BS_ARR_CLOSE); break;
+            case '{': push(BS_OBJ_OPEN); break;
+            case '}': push(BS_OBJ_CLOSE); break;
+        }
+        return true;
+    }
+
+    // ================ key =================
+    template <typename T>
+    BSON& operator[](T key) { return add(key); }
+
+    // ============== val code ==============
+    template <typename T>
+    BSON& add(T code) {
+        push(BS_CODE | BS_D16_MSB(code));
+        push(BS_D16_LSB(code));
+        return *this;
+    }
+
+    template <typename T>
+    void operator=(T val) { add(val); }
+    template <typename T>
+    void operator+=(T val) { add(val); }
+
+    // ============== val bool ==============
+    BSON& add(bool b) {
+        push(BS_BOOLEAN | b);
+        return *this;
+    }
+
+    BSON_MAKE_ADD(bool)
+
+// ============== val int ==============
+#define BSON_MAKE_UINT(T)                              \
+    BSON& add(T val) { return _int(&val, sizeof(T)); } \
+    BSON_MAKE_ADD(T)
+
+#define BSON_MAKE_INT(T)                                                                                     \
+    BSON& add(T val) { return val < 0 ? (val = -val, _int(&val, sizeof(T), true)) : _int(&val, sizeof(T)); } \
+    BSON_MAKE_ADD(T)
+
+    BSON_MAKE_UINT(unsigned char)
+    BSON_MAKE_UINT(unsigned short)
+    BSON_MAKE_UINT(unsigned int)
+    BSON_MAKE_UINT(unsigned long)
+    BSON_MAKE_UINT(unsigned long long)
+
+    BSON_MAKE_INT(char)
+    BSON_MAKE_INT(signed char)
+    BSON_MAKE_INT(short)
+    BSON_MAKE_INT(int)
+    BSON_MAKE_INT(long)
+    BSON_MAKE_INT(long long)
+
+    // ============== val float ==============
+    BSON& add(float value, int dec) {
+        push(BS_FLOAT | BS_DECIMAL(dec));
+        write(&value, BS_FLOAT_SIZE);
+        return *this;
+    }
+    BSON& add(double value, int dec) { return add((float)value, dec); }
+
+    void operator+=(float val) { add(val, 4); }
+    void operator=(float val) { add(val, 4); }
+    void operator+=(double val) { add(val, 4); }
+    void operator=(double val) { add(val, 4); }
+
+    // ============== val bin ==============
+    // затем вручную write(data, size, pgm)
+    bool beginBin(uint16_t size) {
+        if (size > BS_MAX_LEN) return false;
+        push(BS_BINARY | BS_D16_MSB(size));
+        push(BS_D16_LSB(size));
+        return true;
+    }
+    BSON& add(const void* data, size_t size, bool pgm = false) {
+        if (beginBin(size)) write(data, size, pgm);
+        return *this;
+    }
+
+    // ============== val string ==============
+    // затем вручную write(str, len, pgm)
+    BSON& beginStr(size_t len) {
+        push(BS_STRING | BS_D16_MSB(len));
+        push(BS_D16_LSB(len));
+        return *this;
+    }
+    BSON& add(const char* str, size_t len, bool pgm = false) {
+        if (len > BS_MAX_LEN) len = BS_MAX_LEN;
+        beginStr(len);
+        write(str, len, pgm);
+        return *this;
+    }
+
+    BSON& add(char* str) { return add((const char*)str); }
+    BSON& add(const char* str) { return add(str, strlen(str), false); }
+
+    BSON_MAKE_ADD(char*)
+    BSON_MAKE_ADD(const char*)
+
+#ifdef ARDUINO
+    BSON& add(const String& str) { return add(str.c_str(), str.length(), false); }
+    BSON& add(const __FlashStringHelper* str) { return add((const char*)str, strlen_P((PGM_P)str), true); }
+
+    BSON_MAKE_ADD(const String&)
+    BSON_MAKE_ADD(const __FlashStringHelper*)
+
+    BSON& add(const StringSumHelper&) = delete;
+    void operator=(const StringSumHelper&) = delete;
+    void operator+=(const StringSumHelper&) = delete;
+
+#ifndef BSON_NO_TEXT
+    BSON& add(const Text& str) { return add(str.str(), str.length(), str.pgm()); }
+    BSON& add(const Value& str) { return add((Text)str); }
+
+    BSON_MAKE_ADD(const Text&)
+    BSON_MAKE_ADD(const Value&)
+#endif
+#endif
+
+// ============== stringify ==============
 #ifdef ARDUINO
     // вывести в Print как JSON
     void stringify(Print& p, bool pretty = false) {
@@ -241,213 +401,10 @@ class BSON : private gtl::stack<uint8_t> {
     }
 #endif
 
-    // размер числа в байтах
-    static uint8_t uint32Size(uint8_t* p) {
-        if (p[3]) return 4;
-        if (p[2]) return 3;
-        if (p[1]) return 2;
-        if (p[0]) return 1;
-        return 0;
-    }
-
-    // размер числа в байтах
-    static uint8_t uint64Size(uint8_t* p) {
-        if (p[7]) return 8;
-        if (p[6]) return 7;
-        if (p[5]) return 6;
-        if (p[4]) return 5;
-        return uint32Size(p);
-    }
-
-    // ============== add bson ==============
-    BSON& add(const BSON& bson) {
-        concat(bson);
-        return *this;
-    }
-    void operator+=(const BSON& bson) { add(bson); }
-
-    // ============ key ==============
-    template <typename T>
-    inline BSON& operator[](T key) { return add(key); }
-
-    // ============== val code ==============
-    template <typename T>
-    BSON& add(T code) {
-        push(BS_CODE | BS_D16_MSB(code));
-        push(BS_D16_LSB(code));
-        return *this;
-    }
-
-    template <typename T>
-    inline void operator=(T val) { add(val); }
-    template <typename T>
-    inline void operator+=(T val) { add(val); }
-
-    // ============== val bool ==============
-    BSON& add(bool b) {
-        push(BS_BOOLEAN | b);
-        return *this;
-    }
-    inline void operator=(bool val) { add(val); }
-    inline void operator+=(bool val) { add(val); }
-
-    // ============== val int ==============
-    BSON& add(unsigned long val) {
-        return _int32(&val);
-    }
-    BSON& add(unsigned long long val) {
-        return _int64(&val);
-    }
-
-    inline BSON& add(unsigned char val) { return add((unsigned long)val); }
-    inline BSON& add(unsigned short val) { return add((unsigned long)val); }
-    inline BSON& add(unsigned int val) { return add((unsigned long)val); }
-
-    BSON& add(long val) {
-        if (val < 0) {
-            val = -val;
-            return _int32(&val, true);
-        } else {
-            return _int32(&val);
-        }
-    }
-    BSON& add(long long val) {
-        if (val < 0) {
-            val = -val;
-            return _int64(&val, true);
-        } else {
-            return _int64(&val);
-        }
-    }
-    inline BSON& add(char val) { return add((long)val); }
-    inline BSON& add(signed char val) { return add((long)val); }
-    inline BSON& add(short val) { return add((long)val); }
-    inline BSON& add(int val) { return add((long)val); }
-
-#define BSON_MAKE_ADD_INT(T)                   \
-    inline void operator=(T val) { add(val); } \
-    inline void operator+=(T val) { add(val); }
-
-    BSON_MAKE_ADD_INT(char)
-    BSON_MAKE_ADD_INT(signed char)
-    BSON_MAKE_ADD_INT(short)
-    BSON_MAKE_ADD_INT(int)
-    BSON_MAKE_ADD_INT(long)
-    BSON_MAKE_ADD_INT(long long)
-
-    BSON_MAKE_ADD_INT(unsigned char)
-    BSON_MAKE_ADD_INT(unsigned short)
-    BSON_MAKE_ADD_INT(unsigned int)
-    BSON_MAKE_ADD_INT(unsigned long)
-    BSON_MAKE_ADD_INT(unsigned long long)
-
-    // ============== val float ==============
-    BSON& add(float value, int dec) {
-        push(BS_FLOAT | BS_DECIMAL(dec));
-        write(&value, BS_FLOAT_SIZE);
-        return *this;
-    }
-    BSON& add(double value, int dec) {
-        return add((float)value, dec);
-    }
-
-    inline void operator+=(float val) { add(val, 4); }
-    inline void operator=(float val) { add(val, 4); }
-    inline void operator+=(double val) { add(val, 4); }
-    inline void operator=(double val) { add(val, 4); }
-
-    // ============== val string ==============
-    BSON& beginStr(size_t len) {
-        push(BS_STRING | BS_D16_MSB(len));
-        push(BS_D16_LSB(len));
-        return *this;
-    }
-    BSON& add(const char* str, size_t len, bool pgm = false) {
-        if (len > BS_MAX_LEN) len = BS_MAX_LEN;
-        beginStr(len);
-        write(str, len, pgm);
-        return *this;
-    }
-
-    inline BSON& add(char* str) {
-        return add((const char*)str);
-    }
-    BSON& add(const char* str) {
-        return add(str, strlen(str), false);
-    }
-
-#ifdef ARDUINO
-    BSON& add(const String& str) {
-        return add(str.c_str(), str.length(), false);
-    }
-    BSON& add(const __FlashStringHelper* str) {
-        return add((const char*)str, strlen_P((PGM_P)str), true);
-    }
-#endif
-
-#define BSON_MAKE_ADD_STR(T)                   \
-    inline void operator=(T val) { add(val); } \
-    inline void operator+=(T val) { add(val); }
-
-    BSON_MAKE_ADD_STR(char*)
-    BSON_MAKE_ADD_STR(const char*)
-#ifdef ARDUINO
-    BSON_MAKE_ADD_STR(const String&)
-    BSON_MAKE_ADD_STR(const __FlashStringHelper*)
-#endif
-
-#if defined(ARDUINO) && !defined(BSON_NO_TEXT)
-    BSON& add(const Text& str) {
-        return add(str.str(), str.length(), str.pgm());
-    }
-    inline void operator=(const Text& str) { add(str); }
-    inline void operator+=(const Text& str) { add(str); }
-
-    BSON& add(const Value& str) {
-        return add((Text)str);
-    }
-    inline void operator=(const Value& str) { add(str); }
-    inline void operator+=(const Value& str) { add(str); }
-#endif
-
-#ifdef ARDUINO
-    BSON& add(const StringSumHelper&) = delete;
-    inline void operator=(const StringSumHelper&) = delete;
-    inline void operator+=(const StringSumHelper&) = delete;
-#endif
-    // ============== val bin ==============
-    bool beginBin(uint16_t size) {
-        if (size > BS_MAX_LEN) return false;
-        push(BS_BINARY | BS_D16_MSB(size));
-        push(BS_D16_LSB(size));
-        return true;
-    }
-    BSON& add(const void* data, size_t size, bool pgm = false) {
-        if (beginBin(size)) write(data, size, pgm);
-        return *this;
-    }
-
-    // ============== container [ ] { } ==============
-    bool operator()(char type) {
-        switch (type) {
-            case '[': push(BS_ARR_OPEN); break;
-            case ']': push(BS_ARR_CLOSE); break;
-            case '{': push(BS_OBJ_OPEN); break;
-            case '}': push(BS_OBJ_CLOSE); break;
-        }
-        return true;
-    }
-
     // ============== private ==============
    private:
-    BSON& _int32(void* p, bool neg = false) {
-        uint8_t len = uint32Size((uint8_t*)p);
-        push(BS_INTEGER | (neg ? BS_NEG_MASK : 0) | len);
-        write(p, len);
-        return *this;
-    }
-    BSON& _int64(void* p, bool neg = false) {
-        uint8_t len = uint64Size((uint8_t*)p);
+    BSON& _int(const void* p, uint8_t size, bool neg = false) {
+        uint8_t len = uintSize((uint8_t*)p, size);
         push(BS_INTEGER | (neg ? BS_NEG_MASK : 0) | len);
         write(p, len);
         return *this;
@@ -464,10 +421,6 @@ enum class BSType : uint8_t {
     Code = BS_CODE,
     Binary = BS_BINARY,
     Container = BS_CONTAINER,
-    ObjectOpen = BS_OBJ_OPEN,
-    ObjectClose = BS_OBJ_CLOSE,
-    ArrayOpen = BS_ARR_OPEN,
-    ArrayClose = BS_ARR_CLOSE,
 };
 
 // ============== PARSER ==============
@@ -481,102 +434,95 @@ class BSON::Parser {
         return _type;
     }
 
-    // длина в байтах [String, Binary]
+    // контейнер - объект [Container]
+    bool isObject() const {
+        return (_type == BSType::Container) ? (_data & BS_CONT_OBJ) : false;
+    }
+
+    // контейнер - массив [Container]
+    bool isArray() const {
+        return (_type == BSType::Container) ? (_data & BS_CONT_ARR) : false;
+    }
+
+    // контейнер открыт [Container]
+    bool isOpen() const {
+        return (_type == BSType::Container) ? (_data & BS_CONT_OPEN) : false;
+    }
+
+    // контейнер закрыт [Container]
+    bool isClose() const {
+        return (_type == BSType::Container) ? (_data & BS_CONT_CLOSE) : false;
+    }
+
+    // длина в байтах [String, Binary, Integer]
     uint16_t length() const {
         switch (_type) {
             case BSType::String:
             case BSType::Binary:
-                return _data.len;
+                return _data;
+
+            case BSType::Integer:
+                return BS_SIZE(_data);
 
             default:
                 return 0;
         }
     }
 
-    // в указатель на строку [String], длина length()
-    const char* toStr() const {
-        switch (_type) {
-            case BSType::String:
-                return (const char*)_dataP();
-
-            default:
-                return "";
-        }
+    // число отрицательное [Integer]
+    bool isNegative() const {
+        return (_type == BSType::Integer) ? BS_NEGATIVE(_data) : false;
     }
 
-    bool toStr(char* str, bool terminate = true) const {
-        switch (_type) {
-            case BSType::String:
-                memcpy(str, _dataP(), _data.len);
-                if (terminate) str[_data.len] = 0;
-                return true;
+    // в указатель на строку [String], длина length()
+    const char* toStr() const {
+        return (_type == BSType::String) ? (const char*)_dataP() : "";
+    }
 
-            default:
-                return false;
-        }
+    // переписать в строку [String]
+    bool toStr(char* str, bool terminate = true) const {
+        if (_type != BSType::String) return false;
+
+        memcpy(str, _dataP(), _data);
+        if (terminate) str[_data] = 0;
+        return true;
     }
 
     // в указатель на тип [Binary], длина length()
     template <typename T>
     T* toBin() const {
-        switch (_type) {
-            case BSType::Binary:
-                return (T*)_dataP();
-
-            default:
-                return nullptr;
-        }
+        return (_type == BSType::Binary) ? (T*)_dataP() : nullptr;
     }
 
+    // переписать в бин
     template <typename T>
     bool toBin(T* to) const {
-        switch (_type) {
-            case BSType::Binary:
-                memcpy(to, _dataP(), _data.len);
-                return true;
+        if (_type != BSType::Binary) return false;
 
-            default:
-                return false;
-        }
+        memcpy(to, _dataP(), _data);
+        return true;
     }
 
     // в код [Code]
     template <typename T>
     T toCode() const {
-        switch (_type) {
-            case BSType::Code:
-                return T(_data.i);
-
-            default:
-                return T(0);
-        }
+        return (_type == BSType::Code) ? T(_data) : T(0);
     }
 
     // в bool [Boolean]
     bool toBool() const {
-        switch (_type) {
-            case BSType::Boolean:
-            case BSType::Integer:
-                return _data.i;
-
-            default:
-                return false;
-        }
+        return (_type == BSType::Boolean) ? _data : false;
     }
 
     // в int [Integer]
     int32_t toInt() const {
-        switch (_type) {
-            case BSType::Code:
-            case BSType::Integer:
-                return _data.i;
+        if (_type != BSType::Integer) return 0;
 
-            case BSType::Float:
-                return _data.f;
-
-            default:
-                return 0;
-        }
+        int32_t v = 0;
+        uint8_t size = BS_SIZE(_data);
+        memcpy(&v, _bson - size, size > sizeof(int32_t) ? sizeof(int32_t) : size);
+        if (BS_NEGATIVE(_data)) v = -v;
+        return v;
     }
 
     // в uint [Integer]
@@ -584,18 +530,29 @@ class BSON::Parser {
         return toInt();
     }
 
+    // в int [Integer]
+    int64_t toInt64() const {
+        if (_type != BSType::Integer) return 0;
+
+        int64_t v = 0;
+        uint8_t size = BS_SIZE(_data);
+        memcpy(&v, _bson - size, size > sizeof(int64_t) ? sizeof(int64_t) : size);
+        if (BS_NEGATIVE(_data)) v = -v;
+        return v;
+    }
+
+    // в uint [Integer]
+    uint64_t toUint64() const {
+        return toInt64();
+    }
+
     // в float [Float]
     float toFloat() const {
-        switch (_type) {
-            case BSType::Integer:
-                return _data.i;
+        if (_type != BSType::Float) return 0.0f;
 
-            case BSType::Float:
-                return _data.f;
-
-            default:
-                return 0.0f;
-        }
+        float f;
+        memcpy(&f, _dataP(), _data);
+        return f;
     }
 
     // парсить следующий блок. Вернёт true при успехе
@@ -608,39 +565,37 @@ class BSON::Parser {
 
         switch (_type) {
             case BSType::Container:
-                _type = BSType(BS_CONTAINER | data);
+                _data = data;
                 break;
 
             case BSType::Boolean:
-                _data.i = BS_BOOLV(data);
+                _data = BS_BOOLV(data);
                 break;
 
             case BSType::Code:
                 if (_ovf()) return false;
-                _data.i = BS_D16_MERGE(data, *_bson++);
+                _data = BS_D16_MERGE(data, *_bson++);
                 break;
 
             case BSType::String:
             case BSType::Binary:
                 if (_ovf()) return false;
-                _data.len = BS_D16_MERGE(data, *_bson++);
-                if (_ovf(_data.len)) return false;
-                _bson += _data.len;
+                _data = BS_D16_MERGE(data, *_bson++);
+                if (_ovf(_data)) return false;
+                _bson += _data;
                 break;
 
-            case BSType::Integer: {
-                uint8_t size = BS_SIZE(data);
-                if (_ovf(size)) return false;
-                _data.i = 0;
-                memcpy(&_data.i, _bson, size > 4 ? 4 : size);  // todo 64
-                if (BS_NEGATIVE(data)) _data.i = -_data.i;
-                _bson += size;
-            } break;
+            case BSType::Integer:
+                _data = BS_SIZE(data);
+                if (_ovf(_data)) return false;
+                _bson += _data;
+                _data = data;  // + neg
+                break;
 
             case BSType::Float:
-                if (_ovf(BS_FLOAT_SIZE)) return false;
-                memcpy(&_data.f, _bson, BS_FLOAT_SIZE);
-                _bson += BS_FLOAT_SIZE;
+                _data = BS_FLOAT_SIZE;
+                if (_ovf(_data)) return false;
+                _bson += _data;
                 break;
 
             default: break;
@@ -650,24 +605,18 @@ class BSON::Parser {
     }
 
    private:
-    union Data {
-        float f;
-        int32_t i;
-        uint16_t len;
-    };
-
-    inline void* _dataP() const {
-        return _bson - _data.len;
+    void* _dataP() const {
+        return _bson - _data;
     }
-    inline bool _ovf(uint16_t len) const {
+    bool _ovf(uint16_t len) const {
         return _bson + len > _bend;
     }
-    inline bool _ovf() const {
+    bool _ovf() const {
         return _bson >= _bend;
     }
 
     uint8_t* _bson;
     uint8_t* _bend;
-    Data _data;
+    uint16_t _data;
     BSType _type;
 };

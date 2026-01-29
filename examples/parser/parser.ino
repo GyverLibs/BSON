@@ -68,20 +68,9 @@ void setup() {
                 Serial.println("Binary");
                 break;
 
-            case BSType::ObjectOpen:
-                Serial.println("ObjectOpen");
-                break;
-
-            case BSType::ObjectClose:
-                Serial.println("ObjectClose");
-                break;
-
-            case BSType::ArrayOpen:
-                Serial.println("ArrayOpen");
-                break;
-
-            case BSType::ArrayClose:
-                Serial.println("ArrayClose");
+            case BSType::Container:
+                Serial.print(p.isObject() ? "Object" : "Array");
+                Serial.println(p.isOpen() ? "Open" : "Close");
                 break;
         }
     }

@@ -131,18 +131,35 @@ Parser(uint8_t* bson, uint16_t len);
 // получить тип блока
 BSType getType();
 
-// длина в байтах [String, Binary]
+// контейнер - объект [Container]
+bool isObject();
+
+// контейнер - массив [Container]
+bool isArray();
+
+// контейнер открыт [Container]
+bool isOpen();
+
+// контейнер закрыт [Container]
+bool isClose();
+
+// длина в байтах [String, Binary, Integer]
 uint16_t length();
+
+// число отрицательное [Integer]
+bool isNegative();
 
 // в указатель на строку [String], длина length()
 const char* toStr();
 
+// переписать в строку [String]
 bool toStr(char* str, bool terminate = true);
 
 // в указатель на тип [Binary], длина length()
 template <typename T>
 T* toBin();
 
+// переписать в бин
 template <typename T>
 bool toBin(T* to);
 
@@ -158,6 +175,12 @@ int32_t toInt();
 
 // в uint [Integer]
 uint32_t toUint();
+
+// в int [Integer]
+int64_t toInt64();
+
+// в uint [Integer]
+uint64_t toUint64();
 
 // в float [Float]
 float toFloat();
