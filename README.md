@@ -18,6 +18,8 @@
 - Поддержка упаковки произвольных бинарных данных
 - Не содержит запятых, они добавляются при распаковке
 - Лимит длины `8192` байт для всего: значение кодов, длина строк, длина бинарных данных
+- Статическая и динамическая сборка
+- Встроенный парсер
 
 ### Совместимость
 Совместима со всеми Arduino платформами (используются Arduino-функции)
@@ -56,11 +58,13 @@ BSON& operator[](T key);
 bool operator()(char type);
 
 // бинарные данные
-bool beginBin(uint16_t size);
-BSON& add(const void* data, size_t size, bool pgm = false);
+bool beginBin(uint16_t size);   // затем вручную write(data, size, pgm)
+BSON& addBin(const void* data, size_t size, bool pgm = false);
+BSON& addBin(const T& data);
 
 // строки
-BSON& beginStr(size_t len);
+BSON& beginStr(size_t len); // затем вручную write(str, len, pgm)
+BSON& addStr(const char* str, size_t len, bool pgm = false);
 
 // зарезервировать размер
 bool reserve(size_t size);
@@ -128,6 +132,15 @@ enum class BSType {
 ```cpp
 Parser(uint8_t* bson, uint16_t len);
 
+// парсить следующий блок и проверить тип. Вернёт true при успехе
+bool next(BSType type);
+
+// парсить следующий блок. Вернёт true при успехе
+bool next();
+
+// true - парсинг окончен корректно
+bool isDone();
+
 // получить тип блока
 BSType getType();
 
@@ -152,16 +165,12 @@ bool isNegative();
 // в указатель на строку [String], длина length()
 const char* toStr();
 
-// переписать в строку [String]
-bool toStr(char* str, bool terminate = true);
+// в текст [String]
+Text toText();
 
-// в указатель на тип [Binary], длина length()
+// в свой тип [Binary]
 template <typename T>
-T* toBin();
-
-// переписать в бин
-template <typename T>
-bool toBin(T* to);
+T toBin();
 
 // в код [Code]
 template <typename T>
@@ -185,13 +194,22 @@ uint64_t toUint64();
 // в float [Float]
 float toFloat();
 
-// парсить следующий блок. Вернёт true при успехе
-bool next();
+// парсинг
+bool readStr(Text* t);
+bool readStr(char* s, uint16_t size, bool terminate = true);
+bool readBool(bool* b);
+bool readInt(T* i);
+bool readInt64(T* i);
+bool readFloat(float* f);
+bool readCode(T* c);
+bool readBin(T* b);
+bool readBin(T* b, uint16_t size);
 ```
 
-## Пример
+## Примеры
 ### Динамическая сборка
 ```cpp
+// коды
 enum class Const {
     some,
     string,
@@ -253,7 +271,7 @@ uint8_t bson[] = {
     BSON_INT16(-12345),
     BSON_INT32(12345678),
     BSON_INT32(-12345678),
-    // BSON_FLOAT(3.1415),
+    BSON_FLOAT(3.1415),
     BSON_BOOL(true),
     BSON_CONT(']'),
 
@@ -261,7 +279,51 @@ uint8_t bson[] = {
 };
 ```
 
-### Распаковка
+### Парсинг
+```cpp
+// сборка
+
+struct Str {
+    int v;
+    float f;
+};
+
+BSON bs;
+bs += 1234;
+bs += "keks";
+bs += true;
+bs += 3.14;
+bs.addBin(Str{321, 33.44});
+
+// парсинг
+
+BSON::Parser p(&bs);
+
+int v;
+char s[5];
+bool b;
+float f;
+Str str;
+
+if (p.readInt(&v) &&
+    p.readStr(s, sizeof(s)) &&
+    p.readBool(&b) &&
+    p.readFloat(&f) &&
+    p.readBin(&str)) {
+    //
+    Serial.println("done");
+    Serial.println(v);
+    Serial.println(s);
+    Serial.println(b);
+    Serial.println(f);
+    Serial.println(str.v);
+    Serial.println(str.f);
+} else {
+    Serial.println("error");
+}
+```
+
+### Другие платформы
 Есть [готовая библиотека](https://github.com/GyverLibs/bson.js) для JavaScript
 
 > npm i @alexgyver/bson

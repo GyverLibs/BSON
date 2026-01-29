@@ -53,15 +53,15 @@
 // ============== static macro ==============
 #define _BSON_INTx(val, len) (BS_INTEGER | (val < 0 ? BS_NEG_MASK : 0) | len)
 #define _BSON_BYTEx(val, n) (((val < 0 ? -val : val) >> (n * 8)) & 0xff)
+uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
 
-union _BS_FB {
-    float f;
-    uint8_t b[BS_FLOAT_SIZE];
-};
-inline constexpr uint8_t _BSON_FLOATx(float v, uint8_t n) {
-    return _BS_FB{v}.b[n];
-}
-// uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
+// union _BS_FB {
+//     float f;
+//     uint8_t b[BS_FLOAT_SIZE];
+// };
+// inline constexpr uint8_t _BSON_FLOATx(float v, uint8_t n) {
+//     return _BS_FB{v}.b[n];
+// }
 
 #define _BS_STR_N1(str) str[0]
 #define _BS_STR_N2(str) _BS_STR_N1(str), str[1]
@@ -240,17 +240,33 @@ class BSON : private gtl::stack<uint8_t> {
     void operator+=(double val) { add(val, 4); }
     void operator=(double val) { add(val, 4); }
 
+    // ============== null ==============
+    BSON& addNull() {
+        push(BS_NULL);
+        return *this;
+    }
+
     // ============== val bin ==============
     // затем вручную write(data, size, pgm)
     bool beginBin(uint16_t size) {
-        if (size > BS_MAX_LEN) return false;
+        if (size > BS_MAX_LEN) {
+            addNull();
+            return false;
+        }
         push(BS_BINARY | BS_D16_MSB(size));
         push(BS_D16_LSB(size));
         return true;
     }
-    BSON& add(const void* data, size_t size, bool pgm = false) {
+    template <typename T>
+    BSON& addBin(const T& data) {
+        return addBin(&data, sizeof(T));
+    }
+    BSON& addBin(const void* data, size_t size, bool pgm = false) {
         if (beginBin(size)) write(data, size, pgm);
         return *this;
+    }
+    BSON& add(const void* data, size_t size, bool pgm = false) {
+        return addBin(data, size, pgm);
     }
 
     // ============== val string ==============
@@ -260,11 +276,14 @@ class BSON : private gtl::stack<uint8_t> {
         push(BS_D16_LSB(len));
         return *this;
     }
-    BSON& add(const char* str, size_t len, bool pgm = false) {
+    BSON& addStr(const char* str, size_t len, bool pgm = false) {
         if (len > BS_MAX_LEN) len = BS_MAX_LEN;
         beginStr(len);
         write(str, len, pgm);
         return *this;
+    }
+    BSON& add(const char* str, size_t len, bool pgm = false) {
+        return addStr(str, len, pgm);
     }
 
     BSON& add(char* str) { return add((const char*)str); }
@@ -413,7 +432,6 @@ class BSON : private gtl::stack<uint8_t> {
 
 // типы BSON для парсера
 enum class BSType : uint8_t {
-    Null = BS_NULL,
     String = BS_STRING,
     Boolean = BS_BOOLEAN,
     Integer = BS_INTEGER,
@@ -421,6 +439,8 @@ enum class BSType : uint8_t {
     Code = BS_CODE,
     Binary = BS_BINARY,
     Container = BS_CONTAINER,
+    Null = BS_NULL,
+    Error = 0xff,
 };
 
 // ============== PARSER ==============
@@ -428,6 +448,10 @@ enum class BSType : uint8_t {
 class BSON::Parser {
    public:
     Parser(uint8_t* bson, uint16_t len) : _bson(bson), _bend(bson + len) {}
+    Parser(BSON* b) : Parser(b->buf(), b->length()) {}
+    Parser(BSON& b) : Parser(&b) {}
+
+    // ============ CHECK ============
 
     // получить тип блока
     BSType getType() const {
@@ -474,33 +498,26 @@ class BSON::Parser {
         return (_type == BSType::Integer) ? BS_NEGATIVE(_data) : false;
     }
 
-    // в указатель на строку [String], длина length()
+    // ============ EXPORT ============
+
+    // указатель на строку [String], длина length()
     const char* toStr() const {
         return (_type == BSType::String) ? (const char*)_dataP() : "";
     }
 
-    // переписать в строку [String]
-    bool toStr(char* str, bool terminate = true) const {
-        if (_type != BSType::String) return false;
-
-        memcpy(str, _dataP(), _data);
-        if (terminate) str[_data] = 0;
-        return true;
+#ifndef BSON_NO_TEXT
+    // в текст [String]
+    Text toText() const {
+        return (_type == BSType::String) ? Text((const char*)_dataP(), _data) : Text();
     }
+#endif
 
-    // в указатель на тип [Binary], длина length()
+    // в свой тип [Binary]
     template <typename T>
-    T* toBin() const {
-        return (_type == BSType::Binary) ? (T*)_dataP() : nullptr;
-    }
-
-    // переписать в бин
-    template <typename T>
-    bool toBin(T* to) const {
-        if (_type != BSType::Binary) return false;
-
-        memcpy(to, _dataP(), _data);
-        return true;
+    T toBin() const {
+        T t{};
+        if (_type == BSType::Binary && _data == sizeof(T)) memcpy(&t, _dataP(), _data);
+        return t;
     }
 
     // в код [Code]
@@ -516,13 +533,7 @@ class BSON::Parser {
 
     // в int [Integer]
     int32_t toInt() const {
-        if (_type != BSType::Integer) return 0;
-
-        int32_t v = 0;
-        uint8_t size = BS_SIZE(_data);
-        memcpy(&v, _bson - size, size > sizeof(int32_t) ? sizeof(int32_t) : size);
-        if (BS_NEGATIVE(_data)) v = -v;
-        return v;
+        return _toInt<int32_t>();
     }
 
     // в uint [Integer]
@@ -532,13 +543,7 @@ class BSON::Parser {
 
     // в int [Integer]
     int64_t toInt64() const {
-        if (_type != BSType::Integer) return 0;
-
-        int64_t v = 0;
-        uint8_t size = BS_SIZE(_data);
-        memcpy(&v, _bson - size, size > sizeof(int64_t) ? sizeof(int64_t) : size);
-        if (BS_NEGATIVE(_data)) v = -v;
-        return v;
+        return _toInt<int64_t>();
     }
 
     // в uint [Integer]
@@ -548,11 +553,69 @@ class BSON::Parser {
 
     // в float [Float]
     float toFloat() const {
-        if (_type != BSType::Float) return 0.0f;
+        return (_type == BSType::Float) ? _toFloat() : 0.0f;
+    }
 
-        float f;
-        memcpy(&f, _dataP(), _data);
-        return f;
+    // ============ PARSING ============
+
+#ifndef BSON_NO_TEXT
+    bool readStr(Text* t) {
+        return next(BSType::String) ? (*t = Text((const char*)_dataP(), _data), true) : false;
+    }
+#endif
+
+    bool readStr(char* s, uint16_t size, bool terminate = true) {
+        if (!next(BSType::String)) return false;
+        uint16_t wrote = size < _data ? size : _data;
+        memcpy(s, _dataP(), wrote);
+        if (terminate && size > wrote) s[wrote] = 0;
+        return true;
+    }
+
+    bool readBool(bool* b) {
+        return next(BSType::Boolean) ? (*b = _data, true) : false;
+    }
+
+    template <typename T>
+    bool readInt(T* i) {
+        return next(BSType::Integer) ? (*i = toInt(), true) : false;
+    }
+
+    template <typename T>
+    bool readInt64(T* i) {
+        return next(BSType::Integer) ? (*i = toInt64(), true) : false;
+    }
+
+    bool readFloat(float* f) {
+        return next(BSType::Float) ? (*f = _toFloat(), true) : false;
+    }
+
+    template <typename T>
+    bool readCode(T* c) {
+        return next(BSType::Code) ? (*c = T(_data), true) : false;
+    }
+
+    template <typename T>
+    bool readBin(T* b) {
+        return readBin(b, sizeof(T));
+    }
+    template <typename T>
+    bool readBin(T* b, uint16_t size) {
+        if (!next(BSType::Binary) || _data != size) return false;
+        memcpy(b, _dataP(), _data);
+        return true;
+    }
+
+    // ============= NEXT =============
+
+    // true - парсинг окончен корректно
+    bool isDone() const {
+        return _done;
+    }
+
+    // парсить следующий блок и проверить тип. Вернёт true при успехе
+    bool next(BSType type) {
+        return next() && getType() == type;
     }
 
     // парсить следующий блок. Вернёт true при успехе
@@ -573,34 +636,35 @@ class BSON::Parser {
                 break;
 
             case BSType::Code:
-                if (_ovf()) return false;
+                if (_ovf()) return _abort();
                 _data = BS_D16_MERGE(data, *_bson++);
                 break;
 
             case BSType::String:
             case BSType::Binary:
-                if (_ovf()) return false;
+                if (_ovf()) return _abort();
                 _data = BS_D16_MERGE(data, *_bson++);
-                if (_ovf(_data)) return false;
+                if (_ovf(_data)) return _abort();
                 _bson += _data;
                 break;
 
             case BSType::Integer:
                 _data = BS_SIZE(data);
-                if (_ovf(_data)) return false;
+                if (_ovf(_data)) return _abort();
                 _bson += _data;
                 _data = data;  // + neg
                 break;
 
             case BSType::Float:
                 _data = BS_FLOAT_SIZE;
-                if (_ovf(_data)) return false;
+                if (_ovf(_data)) return _abort();
                 _bson += _data;
                 break;
 
             default: break;
         }
 
+        if (_bson == _bend) _done = true;
         return _bson <= _bend;
     }
 
@@ -614,9 +678,30 @@ class BSON::Parser {
     bool _ovf() const {
         return _bson >= _bend;
     }
+    bool _abort() {
+        _type = BSType::Error;
+        _bson = _bend;
+        return false;
+    }
+
+    template <typename T>
+    T _toInt() const {
+        if (_type != BSType::Integer) return 0;
+
+        T v = 0;
+        uint8_t size = BS_SIZE(_data);
+        memcpy(&v, _bson - size, size > sizeof(T) ? sizeof(T) : size);
+        return BS_NEGATIVE(_data) ? -v : v;
+    }
+    float _toFloat() const {
+        float f;
+        memcpy(&f, _dataP(), _data);
+        return f;
+    }
 
     uint8_t* _bson;
     uint8_t* _bend;
     uint16_t _data;
-    BSType _type;
+    bool _done = false;
+    BSType _type = BSType::Error;
 };
