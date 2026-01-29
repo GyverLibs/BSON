@@ -16,6 +16,7 @@
 #define BS_CODE (4 << 5)
 #define BS_BINARY (5 << 5)
 #define BS_CONTAINER (6 << 5)
+#define BS_NULL (7 << 5)
 
 #define BS_CONT_OBJ (1 << 4)
 #define BS_CONT_OPEN (1 << 3)
@@ -56,7 +57,7 @@
 
 union _BS_FB {
     float f;
-    uint8_t b[4];
+    uint8_t b[BS_FLOAT_SIZE];
 };
 inline constexpr uint8_t _BSON_FLOATx(float v, uint8_t n) {
     return _BS_FB{v}.b[n];
@@ -193,6 +194,10 @@ class BSON : private gtl::stack<uint8_t> {
                     p.print(BS_BOOLV(data) ? "true" : "false");
                     break;
 
+                case BS_NULL:
+                    p.print("null");
+                    break;
+
                 case BS_INTEGER: {
                     if (BS_NEGATIVE(data)) p.print('-');
                     uint32_t v = 0;
@@ -204,8 +209,8 @@ class BSON : private gtl::stack<uint8_t> {
 
                 case BS_FLOAT: {
                     float v;
-                    memcpy(&v, bson, 4);
-                    bson += 4;
+                    memcpy(&v, bson, BS_FLOAT_SIZE);
+                    bson += BS_FLOAT_SIZE;
                     p.print(v, BS_DECIMAL(data));
                 } break;
 
@@ -339,7 +344,7 @@ class BSON : private gtl::stack<uint8_t> {
     // ============== val float ==============
     BSON& add(float value, int dec) {
         push(BS_FLOAT | BS_DECIMAL(dec));
-        write(&value, 4);
+        write(&value, BS_FLOAT_SIZE);
         return *this;
     }
     BSON& add(double value, int dec) {
@@ -451,6 +456,7 @@ class BSON : private gtl::stack<uint8_t> {
 
 // типы BSON для парсера
 enum class BSType : uint8_t {
+    Null = BS_NULL,
     String = BS_STRING,
     Boolean = BS_BOOLEAN,
     Integer = BS_INTEGER,
