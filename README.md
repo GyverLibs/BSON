@@ -40,6 +40,14 @@
 ### Структура пакета
 ![bson](/docs/bson.png)
 
+### Настройки
+```cpp
+#define BSON_NO_TEXT    // отключить поддержку Text (библиотка StringUtils)
+#define BSON_USE_VECTOR // использовать std::vector вместо библиотеки GTL
+
+// #include <BSON.h>
+```
+
 ### Динамическая сборка, BSON
 ```cpp
 // прибавить данные любого типа
@@ -134,6 +142,9 @@ Parser(uint8_t* bson, uint16_t len);
 
 // парсить следующий блок и проверить тип. Вернёт true при успехе
 bool next(BSType type);
+
+// парсить следующий блок и проверить контейнер [ ] { }. Вернёт true при успехе
+bool next(char cont);
 
 // парсить следующий блок. Вернёт true при успехе
 bool next();

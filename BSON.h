@@ -1,5 +1,14 @@
 #pragma once
+#include <inttypes.h>
+#include <string.h>
+
+#ifdef BSON_USE_VECTOR
+#include <vector>
+#define BS_STACK std::vector<uint8_t>
+#else
 #include <GTL.h>
+#define BS_STACK gtl::stack<uint8_t>
+#endif
 
 #if defined(ARDUINO) && !defined(BSON_NO_TEXT)
 #include <StringUtils.h>
@@ -112,15 +121,42 @@ inline constexpr uint8_t BSON_CONT(char t) { return t == '{' ? BS_OBJ_OPEN : (t 
 #define BSON_NULL() BS_NULL
 
 // ============== BSON ==============
-class BSON : private gtl::stack<uint8_t> {
-    typedef gtl::stack<uint8_t> ST;
+class BSON : private BS_STACK {
+    typedef BS_STACK ST;
 
 #define BSON_MAKE_ADD(T)                \
     void operator=(T val) { add(val); } \
     void operator+=(T val) { add(val); }
 
    public:
-    using ST::addCapacity;
+#ifdef BSON_USE_VECTOR
+    using ST::clear;
+    using ST::reserve;
+    void push(uint8_t v) { ST::push_back(v); }
+    uint8_t* buf() { return ST::data(); }
+    uint16_t length() { return ST::size(); }
+    bool concat(const ST& st) {
+        ST::reserve(ST::size() + st.size());
+        ST::insert(ST::end(), st.begin(), st.end());
+        return true;
+    }
+    size_t write(const void* data, size_t len) {
+        const uint8_t* p = (const uint8_t*)data;
+        ST::reserve(ST::size() + len);
+        ST::insert(ST::end(), p, p + len);
+        return len;
+    }
+    size_t write(const void* data, size_t len, bool) {
+        return write(data, len);
+    }
+    size_t write(const uint8_t* data, size_t len) {
+        return write(data, len);
+    }
+    operator uint8_t*() {
+        return ST::data();
+    }
+    void setOversize(uint8_t) {}
+#else
     using ST::buf;
     using ST::clear;
     using ST::concat;
@@ -130,6 +166,7 @@ class BSON : private gtl::stack<uint8_t> {
     using ST::setOversize;
     using ST::write;
     using ST::operator uint8_t*;
+#endif
 
     class Parser;
 
@@ -313,7 +350,7 @@ class BSON : private gtl::stack<uint8_t> {
 #endif
 
 // ============== stringify ==============
-#ifdef ARDUINO
+#if defined(ARDUINO) && !defined(BSON_USE_VECTOR)
     // вывести в Print как JSON
     void stringify(Print& p, bool pretty = false) {
         stringify(*this, p, pretty);
@@ -553,7 +590,9 @@ class BSON::Parser {
 
     // в float [Float]
     float toFloat() const {
-        return (_type == BSType::Float) ? _toFloat() : 0.0f;
+        float f;
+        if (_type == BSType::Float) memcpy(&f, _dataP(), _data);
+        return f;
     }
 
     // ============ PARSING ============
@@ -587,7 +626,7 @@ class BSON::Parser {
     }
 
     bool readFloat(float* f) {
-        return next(BSType::Float) ? (*f = _toFloat(), true) : false;
+        return next(BSType::Float) ? (memcpy(f, _dataP(), _data), true) : false;
     }
 
     template <typename T>
@@ -616,6 +655,18 @@ class BSON::Parser {
     // парсить следующий блок и проверить тип. Вернёт true при успехе
     bool next(BSType type) {
         return next() && getType() == type;
+    }
+
+    // парсить следующий блок и проверить контейнер [ ] { }. Вернёт true при успехе
+    bool next(char cont) {
+        if (!next(BSType::Container)) return false;
+        switch (cont) {
+            case '[': return _data == (BS_CONT_ARR | BS_CONT_OPEN);
+            case ']': return _data == (BS_CONT_ARR | BS_CONT_CLOSE);
+            case '{': return _data == (BS_CONT_OBJ | BS_CONT_OPEN);
+            case '}': return _data == (BS_CONT_OBJ | BS_CONT_CLOSE);
+            default: return false;
+        }
     }
 
     // парсить следующий блок. Вернёт true при успехе
@@ -692,11 +743,6 @@ class BSON::Parser {
         uint8_t size = BS_SIZE(_data);
         memcpy(&v, _bson - size, size > sizeof(T) ? sizeof(T) : size);
         return BS_NEGATIVE(_data) ? -v : v;
-    }
-    float _toFloat() const {
-        float f;
-        memcpy(&f, _dataP(), _data);
-        return f;
     }
 
     uint8_t* _bson;
