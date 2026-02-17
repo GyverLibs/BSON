@@ -1,5 +1,6 @@
 #pragma once
 #include <inttypes.h>
+#include <limits.h>
 #include <string.h>
 
 #ifdef BSON_USE_VECTOR
@@ -257,7 +258,12 @@ class BSON : private BS_STACK {
     BSON_MAKE_UINT(unsigned long)
     BSON_MAKE_UINT(unsigned long long)
 
+#if (CHAR_MIN < 0)
     BSON_MAKE_INT(char)
+#else
+    BSON_MAKE_UINT(char)
+#endif
+
     BSON_MAKE_INT(signed char)
     BSON_MAKE_INT(short)
     BSON_MAKE_INT(int)
