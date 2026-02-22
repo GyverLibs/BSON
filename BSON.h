@@ -63,7 +63,7 @@
 // ============== static macro ==============
 #define _BSON_INTx(val, len) (BS_INTEGER | (val < 0 ? BS_NEG_MASK : 0) | len)
 #define _BSON_BYTEx(val, n) (((val < 0 ? -val : val) >> (n * 8)) & 0xff)
-uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
+inline uint8_t _BSON_FLOATx(float v, uint8_t n) { return ((uint8_t*)&v)[n]; }
 
 // union _BS_FB {
 //     float f;
