@@ -11,7 +11,8 @@ uint8_t bson_st[] = {
 
     BSON_KEY("arr", 3),
     BSON_CONT('['),
-    BSON_STR("string", 6),
+    // BSON_STR("string", 6),
+    BSON_CHARS('s', 't', 'r', 'i', 'n', 'g'),
     BSON_CODE(12),
     BSON_INT8(123),
     BSON_INT8(-123),

@@ -119,7 +119,7 @@ BSON_INT32(val)     // int32
 BSON_INT64(val)     // int64
 BSON_BOOL(val)      // bool
 BSON_STR(str, len)  // "string" + длина
-BSON_KEY(str, len)  // "string" + длина
+BSON_CHARS(...)     // 's', 't', 'r', 'i', 'n', 'g'
 ```
 
 ### Линейный парсер BSON::Parser
@@ -139,6 +139,12 @@ enum class BSType {
 ```
 ```cpp
 Parser(uint8_t* bson, uint16_t len);
+
+// вывести в Print как JSON
+void stringify(Print& p, bool pretty = false);
+
+// начать заново
+void reset();
 
 // парсить следующий блок и проверить тип. Вернёт true при успехе
 bool next(BSType type);
