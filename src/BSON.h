@@ -14,7 +14,7 @@
 #endif
 
 #if defined(ARDUINO) && !defined(BSON_NO_TEXT)
-#include <StringUtils.h>
+#include <StringUtilsGyver.h>
 #endif
 
 // ============== BSON ==============
