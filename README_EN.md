@@ -1,219 +1,385 @@
-This is an automatic translation, may be incorrect in some places. See sources and examples!
+This is an automatic translation and may be incorrect in some places. See the source README and examples for authoritative information.
 
-# Bson
-A simple "binary" version of the Json package, gathers linearly:
-- On average, 2-3 times lighter than a regular JSON, it is going much faster
-- B ~ 4 times faster string lines in the assembly
-- supports "codes": the number that can be a key or value, and when unpacking will be replaced with a line from the list on the index
-- Lines do not need to be shielded
-- support for integers 0..8 bytes
-- Float support indicating the number of accuracy signs
-- Support for JSON of MASSES and Objects Key: Value
+[![latest](https://img.shields.io/github/v/release/GyverLibs/BSON.svg?color=brightgreen)](https://github.com/GyverLibs/BSON/releases/latest/download/BSON.zip)
+[![PIO](https://badges.registry.platformio.org/packages/gyverlibs/library/BSON.svg)](https://registry.platformio.org/libraries/gyverlibs/BSON)
+[![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
+[![Foo](https://img.shields.io/badge/%E2%82%BD%24%E2%82%AC%20%D0%9F%D0%BE%D0%B4%D0%B4%D0%B5%D1%80%D0%B6%D0%B0%D1%82%D1%8C-%D0%B0%D0%B2%D1%82%D0%BE%D1%80%D0%B0-orange.svg?style=flat-square)](https://alexgyver.ru/support_alex/)
+[![Foo](https://img.shields.io/badge/README-ENGLISH-blueviolet.svg?style=flat-square)](https://github-com.translate.goog/GyverLibs/BSON?_x_tr_sl=ru&_x_tr_tl=en)  
+
+[![Foo](https://img.shields.io/badge/ПОДПИСАТЬСЯ-НА%20ОБНОВЛЕНИЯ-brightgreen.svg?style=social&logo=telegram&color=blue)](https://t.me/GyverLibs)
+
+# BSON
+A simple binary version of the JSON packet is assembled linearly:
+- On average, 2-3 times lighter than regular JSON, it is assembled much faster.
+- ~4 times faster than String strings in assembly
+- Supports "codes": a number that can be a key or value, and when unpacked will be replaced by a line from the list by index
+- Strings don't need to be screened
+- Support for integers 0.8 bytes
+- Float support with number of accuracy marks
+- Support for JSON arrays and objects key: value
 - Support for packaging of arbitrary binary data
-- does not contain commas, they are added when unpacking
-- Limit of the length of `8192 back for everything: codes, lines length, binary data length
+- It does not contain commas, they are added when unpacking.
+- Length limit`8192`bytes for everything: code value, line length, binary data length
+- Static and dynamic assembly
+- Built-in parser
 
-## compatibility
-Compatible with all arduino platforms (used arduino functions)
+### Compatibility
+Compatible with all Arduino platforms (Arduino features are used)
 
 ### Dependencies
-- [Stringutils] (https://github.com/gyverlibs/stringutils)
-- [gtl] (https://github.com/gyverlibs/gtl)
+- [StringUtils](https://github.com/GyverLibs/StringUtils)
+- [GTL](https://github.com/GyverLibs/GTL)
 
-## Content
-- [use] (#usage)
-- [versions] (#varsions)
-- [installation] (# Install)
-- [bugs and feedback] (#fedback)
+## Contents
+- [Use of use](#usage)
+- [Versions](#versions)
+- [Installation](#install)
+- [Bugs and feedback](#feedback)
 
-<a id = "USAGE"> </A>
+<a id="usage"></a>
 
-## Usage
+## Use of use
 ### Package structure
-! [bson] (/doc/bson.png)
+![bson](/docs/bson.png)
 
-### description of the class
-`` `CPP
-// add any type of data
-BSON & Add (T Data);
-VOID Operator = (T Data);
-VOID Operator+= (T Data);
+### Settings
+```cpp
+#define BSON_NO_TEXT    // Disable Text support (StringUtils library)
+#define BSON_USE_VECTOR // Use std:vector instead of GTL
 
-// Float
-BSON & Add (Float Data, Int dec);
-BSON & Add (Double Data, Int dec);
+// #include <BSON.h>
+```
+
+### Dynamic Assembly, BSON
+```cpp
+// add data of any kind
+BSON& add(T data);
+void operator=(T data);
+void operator+=(T data);
+
+// float
+BSON& add(float data, int dec);
+BSON& add(double data, int dec);
 
 // key
-BSON & Operator [] (T Key);
+BSON& operator[](T key);
 
-// container, always return True.type: '{', '[', '}', ']'
-Bool Operator () (Char Type);
+// The container will always return true. type: '{', '[', '}', ' -
+bool operator()(char type);
 
-// binary data
-Bool Beginbin (Uint16_T Size);
-BSON & Add (Consta* Data, Size_t Size, Bool PGM = FALSE);
+// binary
+bool beginBin(uint16_t size);   // manually write (data, size, pgm)
+BSON& addBin(const void* data, size_t size, bool pgm = false);
+BSON& addBin(const T& data);
 
-// Lines
-Bson & beginstr (size_t leen);
+// line
+BSON& beginStr(size_t len); // manually write(str, len, pgm)
+BSON& addStr(const char* str, size_t len, bool pgm = false);
 
-// Reserve size
-Bool Reserve (Size_T SIZE);
+// reserve
+bool reserve(size_t size);
 
-// reserve, elements (add to the current size of the buffer)
-Bool Addcapacy (Size_t Size);
+// reserve items (add to the current buffer size)
+bool addCapacity(size_t size);
 
-// Install an increase in size to reduce the number of small reallocks.Silent.8
-VOID setOVERSIZE (Uint16_T Oversize);
+// Increase the size to reduce the number of small locations. Shut up. 8.
+void setOversize(uint16_t oversize);
 
-// size in bytes
-Size_t Length ();
+// byte size
+size_t length();
 
-// access to the buffer
-uint8_t* buf ();
+// buffering
+uint8_t* buf();
 
-// Clean
-Void Clear ();
+// cleanse
+void clear();
 
-// move to another object
-VOID Move (BSON & BSON);
+// move
+void move(BSON& bson);
 
-// Static
+// STATIC
 
-// maximum length of lines and binary data
-static size_t maxdatalength ();
+// Maximum length of lines and binary data
+static size_t maxDataLength();
 
-// Bring to Print as json
-Static Vood Stringifi (BSON & BSON, Print & P, Bool Pretty = False);
+// print out as JSON
+static void stringify(BSON& bson, Print& p, bool pretty = false);
 
-// Bring to Print as json
-Static Void Stringifi (Consta Uint8_t* Bson, Size_t Len, Print & P, Bool Pretty = False);
-`` `
+// print out as JSON
+static void stringify(const uint8_t* bson, size_t len, Print& p, bool pretty = false);
+```
 
 ### Static assembly
-`` `CPP
-Bson_cont (char t) // container '{' ','} ',' [','] '
-Bson_code (code) // Code
-Bson_float (val) // Float
-BSON_INT8 (VAL) // Int8
-BSON_INT16 (VAL) // Int16
-BSON_INT24 (VAL) // Int24
-Bson_int32 (val) // Int32
-BSON_INT64 (VAL) // Int64
-BSON_BOOL (VAL) // Bool
-Bson_str (str, len) // "string" + length
-Bson_key (str, len) // "string" + length
-`` `
+```cpp
+BSON_CONT(char t)   // container '{', '}', '[', '] -
+BSON_CODE(code)     // code
+BSON_FLOAT(val)     // float
+BSON_INT8(val)      // int8
+BSON_INT16(val)     // int16
+BSON_INT24(val)     // int24
+BSON_INT32(val)     // int32
+BSON_INT64(val)     // int64
+BSON_BOOL(val)      // bool
+BSON_STR(str, len)  // "string" + length
+BSON_CHARS(...)     // 's', 't', 'r', 'i', 'n', 'g'
+```
 
-## Example
+### BSON line parser:::Parser
+```cpp
+enum class BSType {
+    String,
+    Boolean,
+    Integer,
+    Float,
+    Code,
+    Binary,
+    ObjectOpen,
+    ObjectClose,
+    ArrayOpen,
+    ArrayClose,
+};
+```
+```cpp
+Parser(uint8_t* bson, uint16_t len);
+
+// print out as JSON
+void stringify(Print& p, bool pretty = false);
+
+// start again
+void reset();
+
+// Take the next block and check the type. It will return true when successful.
+bool next(BSType type);
+
+// To parse the next block and check the container [ ] { } It will return true if it succeeds.
+bool next(char cont);
+
+// to parse the next block. It will return true when successful.
+bool next();
+
+// True - parsing is completed correctly
+bool isDone();
+
+// type
+BSType getType();
+
+// Container - object [Container]
+bool isObject();
+
+// Container - Array [Container]
+bool isArray();
+
+// The container is open [container]
+bool isOpen();
+
+// The container is closed [container]
+bool isClose();
+
+// length in bytes [String, Binary, Integer]
+uint16_t length();
+
+// number negative [Integer]
+bool isNegative();
+
+// c pointer to [String], length()
+const char* toStr();
+
+// in text [String]
+Text toText();
+
+// in his own kind [Binary]
+template <typename T>
+T toBin();
+
+// in code.
+template <typename T>
+T toCode();
+
+// in bool [Boolean]
+bool toBool();
+
+// int [Integer]
+int32_t toInt();
+
+// at uint [Integer]
+uint32_t toUint();
+
+// int [Integer]
+int64_t toInt64();
+
+// at uint [Integer]
+uint64_t toUint64();
+
+// in float [Float]
+float toFloat();
+
+// sailing
+bool readStr(Text* t);
+bool readStr(char* s, uint16_t size, bool terminate = true);
+bool readBool(bool* b);
+bool readInt(T* i);
+bool readInt64(T* i);
+bool readFloat(float* f);
+bool readCode(T* c);
+bool readBin(T* b);
+bool readBin(T* b, uint16_t size);
+```
+
+## Examples
 ### Dynamic assembly
-`` `CPP
-enum class const {
-SOME,
-String,
-Constants,
+```cpp
+// code
+enum class Const {
+    some,
+    string,
+    constants,
 };
 
-Bson b;
-b ('{');
+BSON b;
+b('{');
 
-if (b ["str"] ('{')) {
-b ["cstring"] = "text";
-b ["fstring"] = f ("text");
-b ["string"] = string ("text");
-b ('}');
+if (b["str"]('{')) {
+    b["cstring"] = "text";
+    b["fstring"] = F("text");
+    b["String"] = String("text");
+    b('}');
 }
 
-if (b [const :: constants] ('{')) {
-B [const :: some] = const :: string;
-B [const :: string] = "Cstring";
-B [const :: constants] = 123;
-b ('}');
+if (b[Const::constants]('{')) {
+    b[Const::some] = Const::string;
+    b[Const::string] = "cstring";
+    b[Const::constants] = 123;
+    b('}');
 }
 
-if (b ["num"] ('{')) {
-b ["int8"] = 123;
-b ["int16"] = 12345;
-b ["int32"] = -123456789;
-b ('}');
+if (b["num"]('{')) {
+    b["int8"] = 123;
+    b["int16"] = 12345;
+    b["int32"] = -123456789;
+    b('}');
 }
 
-if (b ["arr"] ('')) {
-b += "str";
-b += 123;
-b += 3.14;
-b += const :: string;
-b (']');
+if (b["arr"]('[')) {
+    b += "str";
+    b += 123;
+    b += 3.14;
+    b += Const::string;
+    b(']');
 }
 
-b ('}');
-`` `
+b('}');
+```
 
 ### Static assembly
-`` `CPP
-uint8_t bson [] = {{
-Bson_cont ('{'),
-Bson_key ("str", 3),
-Bson_str ("Hello", 5),
+```cpp
+uint8_t bson[] = {
+    BSON_CONT('{'),
+    BSON_KEY("str", 3),
+    BSON_STR("hello", 5),
 
-Bson_key ("int", 3),
-Bson_int16 (12345),
+    BSON_KEY("int", 3),
+    BSON_INT16(12345),
 
-Bson_key ("Arr", 3),
-Bson_cont ('),
-Bson_str ("String", 6),
-Bson_code (12),
-Bson_int8 (123),
-Bson_int8 (-123),
-Bson_int16 (12345),
-Bson_int16 (-12345),
-Bson_int32 (12345678),
-Bson_int32 (-12345678),
-// bson_float (3.1415),
-BSON_BOOL (True),
-Bson_cont (']'),
+    BSON_KEY("arr", 3),
+    BSON_CONT('['),
+    BSON_STR("string", 6),
+    BSON_CODE(12),
+    BSON_INT8(123),
+    BSON_INT8(-123),
+    BSON_INT16(12345),
+    BSON_INT16(-12345),
+    BSON_INT32(12345678),
+    BSON_INT32(-12345678),
+    BSON_FLOAT(3.1415),
+    BSON_BOOL(true),
+    BSON_CONT(']'),
 
-Bson_cont ('}'),
+    BSON_CONT('}'),
 };
-`` `
+```
 
-### unpacking
-There is [the finished library] (https://github.com/gyverlibs/bson.js) for JavaScript
+### parsing
+```cpp
+// assembly
+
+struct Str {
+    int v;
+    float f;
+};
+
+BSON bs;
+bs += 1234;
+bs += "keks";
+bs += true;
+bs += 3.14;
+bs.addBin(Str{321, 33.44});
+
+// sailing
+
+BSON::Parser p(&bs);
+
+int v;
+char s[5];
+bool b;
+float f;
+Str str;
+
+if (p.readInt(&v) &&
+    p.readStr(s, sizeof(s)) &&
+    p.readBool(&b) &&
+    p.readFloat(&f) &&
+    p.readBin(&str)) {
+    //
+    Serial.println("done");
+    Serial.println(v);
+    Serial.println(s);
+    Serial.println(b);
+    Serial.println(f);
+    Serial.println(str.v);
+    Serial.println(str.f);
+} else {
+    Serial.println("error");
+}
+```
+
+### Other platforms
+There.[library](https://github.com/GyverLibs/bson.js)JavaScript
 
 > npm i @alexgyver/bson
 
-<a ID = "Versions"> </a>
+<a id="versions"></a>
 
-## versions
-- V2.0.0
+## Versions
+- v2.0.0
 
-<a id = "Install"> </a>
+<a id="install"></a>
 ## Installation
-- The library can be found by the name ** bson ** and installed through the library manager in:
-- Arduino ide
-- Arduino ide v2
-- Platformio
-- [download the library] (https://github.com/gyverlibs/bson/archive/refs/heads/main.zip) .Zip archive for manual installation:
-- unpack and put in * C: \ Program Files (X86) \ Arduino \ Libraries * (Windows X64)
-- unpack and put in * C: \ Program Files \ Arduino \ Libraries * (Windows X32)
-- unpack and put in *documents/arduino/libraries/ *
-- (Arduino id) Automatic installation from. Zip: * sketch/connect the library/add .Zip library ... * and specify downloaded archive
-- Read more detailed instructions for installing libraries[here] (https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
+- The library can be found under the name **BSON** and installed through the library manager in:
+    - Arduino IDE
+    - Arduino IDE v2
+    - PlatformIO
+- [Download the library](https://github.com/GyverLibs/BSON/archive/refs/heads/main.zip).zip archive for manual installation:
+    - Unpack and put in *C:\Program Files (x86)\Arduino\libraries* (Windows x64)
+    - Unpack and put in *C:\Program Files\Arduino\libraries* (Windows x32)
+    - Unpack and put in *Documents/Arduino/libraries/ *
+    - (Arduino IDE) Automatic installation from .zip: *Sketch/Connect library/Add .ZIP library...* and specify downloaded archive
+- Read more detailed instructions for installing libraries[here](https://alexgyver.ru/arduino-first/#%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B1%D0%B8%D0%B1%D0%BB%D0%B8%D0%BE%D1%82%D0%B5%D0%BA)
 ### Update
-- I recommend always updating the library: errors and bugs are corrected in the new versions, as well as optimization and new features are added
-- through the IDE library manager: find the library how to install and click "update"
-- Manually: ** remove the folder with the old version **, and then put a new one in its place.“Replacement” cannot be done: sometimes in new versions, files that remain when replacing are deleted and can lead to errors!
+- I recommend always updating the library: new versions fix errors and bugs, as well as optimize and add new features.
+- Through the library manager IDE: find the library as when installing and click "Update"
+- Manually: **Delete the folder with the old version** and then put the new one in its place. “Replacement” can not be done: sometimes new versions delete files that will remain when replaced and can lead to errors!
 
-<a id = "Feedback"> </a>
+<a id="feedback"></a>
 
-## bugs and feedback
-Create ** Issue ** when you find the bugs, and better immediately write to the mail [alex@alexgyver.ru] (mailto: alex@alexgyver.ru)
-The library is open for refinement and your ** pull Request ** 'ow!
+## Bugs and feedback
+If you find bugs, create **Issue**, or better write to the mail immediately.[alex@alexgyver.ru](mailto:alex@alexgyver.ru)  
+The library is open for revision and your **Pull Requests*!
 
-When reporting about bugs or incorrect work of the library, it is necessary to indicate:
-- The version of the library
-- What is MK used
+When reporting bugs or incorrect work of the library, it is necessary to specify:
+- Library version
+- What is used by the IC
 - SDK version (for ESP)
-- version of Arduino ide
-- whether the built -in examples work correctly, in which the functions and designs are used, leading to a bug in your code
-- what code has been loaded, what work was expected from it and how it works in reality
-- Ideally, attach the minimum code in which the bug is observed.Not a canvas of a thousand lines, but a minimum code
+- Arduino IDE version
+- Are embedded examples that use features and designs that cause bugs in your code working correctly?
+- What code was downloaded, what work was expected from it and how it works in reality
+- Ideally, attach the minimum code in which the bug is observed. Not a canvas of a thousand lines, but a minimum code.
