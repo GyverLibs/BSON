@@ -16,7 +16,7 @@ const char index_html[] PROGMEM = R"raw(
     <p id="out" style="white-space: break-spaces;"></p>
 
     <script type="module">
-        import decodeBson from 'https://gyverlibs.github.io/bson.js/bson.js';
+        import {decodeBson} from 'https://gyverlibs.github.io/bson.js/bson.min.js';
 
         const codes = [
             'some',
@@ -29,8 +29,6 @@ const char index_html[] PROGMEM = R"raw(
             try {
                 let arr = new Uint8Array(await res.arrayBuffer());
                 let json = decodeBson(arr, codes);
-                console.log(arr);
-                console.log(JSON.stringify(json), JSON.stringify(json).length);
                 console.log(json);
                 out.innerText = JSON.stringify(json, null, 2);
             } catch (e) {
@@ -78,51 +76,69 @@ void setup() {
 
         if (b["str"]('{')) {
             b["cstring"] = "text";
-            b["fstring"] = F("text");
-            b["String"] = String("text");
+            b["fstring"] = F("ftext");
+            b["String"] = String("stext");
+            b['s'] = 'a';
             b('}');
         }
 
-        b[Const::some] = Const::string;
-        b[Const::string] = "cstring";
-        b[Const::constants] = 123;
+        if (b["int"]('{')) {
+            b["int0"] = (int8_t)-0;
+            b["int4"] = (int8_t)-16;
+            b["int8"] = (int8_t)-123;
+            b["int16"] = (int16_t)-12345;
+            b["int24"] = (int32_t)-1234567;
+            b["int32"] = -123456789;
+            b["int40"] = -1234567898765;
+
+            b["uint0"] = (uint8_t)0;
+            b["uint4"] = (uint8_t)16;
+            b["uint8"] = (uint8_t)123;
+            b["uint16"] = (uint16_t)12345;
+            b["uint24"] = (uint32_t)1234567;
+            b["uint32"] = 123456789;
+            b["uint40"] = 1234567898765;
+            b('}');
+        }
+
+        if (b["float"]('{')) {
+            b["f0"] = 0.0;
+            b["float"] = 3.1415;
+            b["fnan"] = NAN;
+            b["finf"] = INFINITY;
+            b('}');
+        }
+
+        if (b["other"]('{')) {
+            b["true"] = true;
+            b["false"] = false;
+            b["null"] = nullptr;
+            b('}');
+        }
+
+        if (b["codes"]('{')) {
+            b["someval"] = BSCode(Const::some);
+            b[BSCode(Const::string)] = "string";
+            b.keyCode(Const::some) = BSCode(Const::constants);
+            b('}');
+        }
 
         if (b["arr"]('[')) {
             b += 123;
-            b += 3.14;
+            b += 3.1415;
             b += "str";
+            b += false;
+            b += nullptr;
+            b += BSCode(Const::some);
 
             b('{');
-            b[Const::some] = 123;
+            b[BSCode(Const::some)] = 123;
             b('}');
 
-            b += Const::some;
             b(']');
         }
 
-        b["true"].add(true);
-        b["false"] = false;
-
-        b["int0"] = (int8_t)-0;
-        b["int8"] = (int8_t)-123;
-        b["int16"] = (int16_t)-12345;
-        b["int24"] = (int32_t)-1234567;
-        b["int32"] = -123456789;
-        b["int40"] = -1234567898765;
-
-        b["uint0"] = (uint8_t)0;
-        b["uint8"] = (uint8_t)123;
-        b["uint16"] = (uint16_t)12345;
-        b["uint24"] = (uint32_t)1234567;
-        b["uint32"] = 123456789;
-        b["uint40"] = 1234567898765;
-
-        b["float1"].add(3.1415, 1);
-        b["float4"].add(3.1415, 4);
-        b["fnan"].add(NAN, 4);
-        b["finf"].add(INFINITY, 4);
-
-        b["bin"].add("test", 4);
+        b["bin"].addBin("test", 4);
         b('}');
 
         server.sendHeader(F("Access-Control-Allow-Origin"), F("*"));

@@ -7,25 +7,18 @@
 [![Foo](https://img.shields.io/badge/ПОДПИСАТЬСЯ-НА%20ОБНОВЛЕНИЯ-brightgreen.svg?style=social&logo=telegram&color=blue)](https://t.me/GyverLibs)
 
 # BSON
-Простой "бинарный" вариант JSON пакета, собирается линейно:
+Простой "бинарный" вариант JSON пакета:
 - В среднем в 2-3 раза легче обычного JSON, собирается сильно быстрее
 - В ~4 раза быстрее String строки в сборке
-- Поддерживает "коды": число, которое может быть ключом или значением, а при распаковке заменится на строку из списка по индексу
-- Строки не нужно экранировать
-- Поддержка целых чисел 0..8 байт
-- Поддержка float с указанием количества знаков точности
-- Поддержка JSON массивов и объектов ключ:значение
-- Поддержка упаковки произвольных бинарных данных
-- Не содержит запятых, они добавляются при распаковке
-- Лимит длины `8192` байт для всего: значение кодов, длина строк, длина бинарных данных
+- Поддержка целых чисел 0..8 байт, float, строк (длина до 8192), bool, произвольных бинарных данных
+- Поддерживает "коды": число до 8192, которое может быть ключом или значением, а при распаковке заменится на строку из списка по индексу
 - Статическая и динамическая сборка
-- Встроенный парсер
+- Встроенный парсер и JSON-стрингификатор
 
 ### Совместимость
 Совместима со всеми Arduino платформами (используются Arduino-функции)
 
 ### Зависимости
-- [StringUtils](https://github.com/GyverLibs/StringUtils)
 - [GTL](https://github.com/GyverLibs/GTL)
 
 ## Содержание
@@ -38,283 +31,327 @@
 
 ## Использование
 ### Структура пакета
-![bson](/docs/bson.png)
-
-### Настройки
-```cpp
-#define BSON_NO_TEXT    // отключить поддержку Text (библиотка StringUtils)
-#define BSON_USE_VECTOR // использовать std::vector вместо библиотеки GTL
-
-// #include <BSON.h>
+```
+|-------------------------------------------------|---------------------------|
+| 0                                               | n                         |
+|-------------------------------------------------|---------------------------|
+| 0  | 1  | 2      | 3   | 4 | 5    | 6    | 7    |                           |
+|----|----|--------|-----|---|------|------|------|---------------------------|
+| 0. subt |     0. null      |      |      |      |                           |
+| 0. subt |     1. bool      |      |      |  v   |                           |
+| 0. subt |     2. cont      |      | open | obj  |                           |
+| 0. subt |     3. float     |      |      |      |                           |
+| 0. subt |     4. bin       |       len len      | len bytes + data bytes    |
+| 1. int  | smallu |            val               |                           |
+| 1. int  | smallu | neg |           len          | uint bytes                |
+| 2. str  | ext    |          len lsb             | ext ? len msb + str bytes |
+| 3. code | ext    |          val lsb             | ext ? val msb             |
+|-----------------------------------------------------------------------------|
 ```
 
-### Динамическая сборка, BSON
+### Динамическая сборка
 ```cpp
-// прибавить данные любого типа
-BSON& add(T data);
-void operator=(T data);
-void operator+=(T data);
+// добавить любой поддерживаемый тип
+void operator=(T val);
+void operator+=(T val);
+void add(T val);
 
-// float
-BSON& add(float data, int dec);
-BSON& add(double data, int dec);
+// максимальная длина строк и величина code
+size_t maxDataLength();
 
-// ключ
-BSON& operator[](T key);
-
-// контейнер, всегда вернёт true. type: '{', '[', '}', ']'
+// открыть/закрыть контейнер [ ] { }, всегда вернёт true
+bool cont(const char type);
 bool operator()(char type);
 
-// бинарные данные
-bool beginBin(uint16_t size);   // затем вручную write(data, size, pgm)
-BSON& addBin(const void* data, size_t size, bool pgm = false);
-BSON& addBin(const T& data);
+// ключ для объектов
+BSON& key(T k);
+BSON& operator[](T k);
+BSON& keyCode(T k);
 
-// строки
-BSON& beginStr(size_t len); // затем вручную write(str, len, pgm)
-BSON& addStr(const char* str, size_t len, bool pgm = false);
+// добавить код
+void addCode(T code);
+void addCode(BSCode_t code);    // addCode(BSCode(T))
 
-// зарезервировать размер
-bool reserve(size_t size);
+// добавить bool
+void addBool(bool b);
+void addBool(const void* b);
 
-// зарезервировать, элементов (добавить к текущему размеру буфера)
-bool addCapacity(size_t size);
+// добавить int
+void addInt(const void* p, uint8_t size);
 
-// установить увеличение размера для уменьшения количества мелких реаллокаций. Умолч. 8
-void setOversize(uint16_t oversize);
+// добавить uint
+void addUint(const void* p, uint8_t size, bool negative = false);
 
-// размер в байтах
-size_t length();
+// добавить int
+void addInt(T val);
 
-// доступ к буферу
-uint8_t* buf();
+// добавить float
+void addFloat(const void* p);
+void addFloat(float value);
+void addFloat(double value);
 
-// очистить
-void clear();
+// добавить null
+void addNull();
 
-// переместить в другой объект
-void move(BSON& bson);
+void operator=(nullptr_t);
+void operator+=(nullptr_t);
+void add(nullptr_t);
 
-// STATIC
+// начать бинарные данные, затем вручную write(data, size, pgm)
+void beginBin(uint32_t size);
 
-// максимальная длина строк и бинарных данных
-static size_t maxDataLength();
+// добавить бинарные данные
+void addBin(const void* data, uint32_t size, bool pgm = false);
+void addBin(const T& data);
+
+// добавить символ как строку
+void addStr(char sym);
+
+// начать строку, затем вручную write(str, len, pgm). Если размер превышает - добавится пустая строка
+bool beginStr(size_t len);
+
+// добавить строку. Обрежется по макс. размеру
+void addStr(const char* str, size_t len, bool pgm = false);
+void addStr(char* str);
+void addStr(const char* str);
+void addStr(const String& str);
+void addStr(const __FlashStringHelper* str);
+
+// вывести в Print как JSON
+void stringify(Print& p, bool pretty = false);
 
 // вывести в Print как JSON
 static void stringify(BSON& bson, Print& p, bool pretty = false);
-
-// вывести в Print как JSON
 static void stringify(const uint8_t* bson, size_t len, Print& p, bool pretty = false);
 ```
 
 ### Статическая сборка
 ```cpp
-BSON_CONT(char t)   // контейнер '{', '}', '[', ']'
-BSON_CODE(code)     // код
-BSON_FLOAT(val)     // float
-BSON_INT8(val)      // int8
-BSON_INT16(val)     // int16
-BSON_INT24(val)     // int24
-BSON_INT32(val)     // int32
-BSON_INT64(val)     // int64
-BSON_BOOL(val)      // bool
-BSON_STR(str, len)  // "string" + длина
-BSON_CHARS(...)     // 's', 't', 'r', 'i', 'n', 'g'
+BN_CONT(char t)   // контейнер '{', '}', '[', ']'
+BS_CODE(code)     // код
+BS_FLOAT(val)     // float
+BS_ZERO()         // 0
+BS_INT8(val)      // int8
+BS_INT16(val)     // int16
+BS_INT24(val)     // int24
+BS_INT32(val)     // int32
+BS_INT64(val)     // int64
+BS_BOOL(val)      // bool
+BS_NULL()         // null
+BS_STR(str, len)  // "string" + длина
+BS_CHARS(...)     // 's', 't', 'r', 'i', 'n', 'g'
 ```
 
 ### Линейный парсер BSON::Parser
 ```cpp
 enum class BSType {
-    String,
-    Boolean,
-    Integer,
+    Null,
+    Bool,
+    Cont,
     Float,
+    Bin,
+    Int,
+    String,
     Code,
-    Binary,
-    ObjectOpen,
-    ObjectClose,
-    ArrayOpen,
-    ArrayClose,
+    Error,
 };
 ```
 ```cpp
-Parser(uint8_t* bson, uint16_t len);
-
-// вывести в Print как JSON
-void stringify(Print& p, bool pretty = false);
-
-// начать заново
-void reset();
-
-// парсить следующий блок и проверить тип. Вернёт true при успехе
-bool next(BSType type);
-
-// парсить следующий блок и проверить контейнер [ ] { }. Вернёт true при успехе
-bool next(char cont);
-
-// парсить следующий блок. Вернёт true при успехе
-bool next();
-
-// true - парсинг окончен корректно
-bool isDone();
+BSParser(const uint8_t* bson, size_t len);
 
 // получить тип блока
 BSType getType();
 
-// контейнер - объект [Container]
-bool isObject();
+// совпадает тип блока
+bool is(BSType type);
 
-// контейнер - массив [Container]
-bool isArray();
+// получить контейнер
+char getCont();
 
-// контейнер открыт [Container]
+// контейнер-объект
+bool isObj();
+
+// контейнер открыт
 bool isOpen();
 
-// контейнер закрыт [Container]
-bool isClose();
+// длина в байтах [String, Bin]
+size_t length();
 
-// длина в байтах [String, Binary, Integer]
-uint16_t length();
-
-// число отрицательное [Integer]
+// число отрицательное [Int]
 bool isNegative();
 
-// в указатель на строку [String], длина length()
-const char* toStr();
+// ============ GET ============
 
-// в текст [String]
-Text toText();
+// указатель на строку [String], длина length()
+const char* getStr();
 
-// в свой тип [Binary]
-template <typename T>
-T toBin();
+// в свой тип [Bin]
+void readBin(void* p, size_t size);
+void readBin(T* p);
+T getBin();
 
-// в код [Code]
-template <typename T>
-T toCode();
+// указатель на [Bin], длина length()
+const uint8_t* getBin();
 
-// в bool [Boolean]
-bool toBool();
+// в uint16_t код [Code]
+void readCode(void* p);
+uint16_t getCode();
+T getCode();
 
-// в int [Integer]
-int32_t toInt();
+// в bool [Bool]
+void readBool(void* p);
+bool getBool();
 
-// в uint [Integer]
-uint32_t toUint();
+// в int [Int]
+void readInt(void* p, uint8_t size);
 
-// в int [Integer]
-int64_t toInt64();
+// в int [Int]
+int32_t getInt();
 
-// в uint [Integer]
-uint64_t toUint64();
+// в uint [Int]
+uint32_t getUint();
+
+// в int [Int]
+int64_t getInt64();
+
+// в uint [Int]
+uint64_t getUint64();
 
 // в float [Float]
-float toFloat();
+void readFloat(void* p);
+float getFloat();
 
-// парсинг
-bool readStr(Text* t);
-bool readStr(char* s, uint16_t size, bool terminate = true);
-bool readBool(bool* b);
-bool readInt(T* i);
-bool readInt64(T* i);
-bool readFloat(float* f);
-bool readCode(T* c);
-bool readBin(T* b);
-bool readBin(T* b, uint16_t size);
+// ============ PARSE ============
+
+// парсить и прочитать строку
+bool parseStr(char* s, uint16_t size, bool terminate = true);
+
+// парсить и прочитать bool
+bool parseBool(void* b);
+
+// парсить и прочитать int
+bool parseInt(T* i);
+bool parseInt(void* i, uint8_t size);
+
+// парсить и прочитать float
+bool parseFloat(void* f);
+
+// парсить и прочитать uint16_t code
+bool parseCode(T* p);
+
+// парсить и прочитать bin
+bool parseBin(T* b);
+bool parseBin(void* b, uint16_t size);
+
+// ============= PARSE =============
+
+// true - парсинг окончен
+bool isDone();
+
+// true - ошибка парсинга
+bool isError();
+
+// парсить следующий блок и проверить тип. Вернёт true при успехе
+bool parse(BSType type);
+
+// парсить следующий блок. Вернёт true при успехе
+bool parse();
 ```
 
 ## Примеры
 ### Динамическая сборка
 ```cpp
-// коды
-enum class Const {
+BSON b;
+
+b('{');
+
+if (b["str"]('{')) {
+    b["cstring"] = "text";
+    b["fstring"] = F("ftext");
+    b('}');
+}
+
+if (b["int"]('{')) {
+    b["int"] = -1234567;
+    b["uint"] = (uint16_t)12345;
+    b('}');
+}
+
+if (b["float"]('{')) {
+    b["float"] = 3.1415;
+    b["fnan"] = NAN;
+    b["finf"] = INFINITY;
+    b('}');
+}
+
+if (b["other"]('{')) {
+    b["true"] = true;
+    b["false"] = false;
+    b["null"] = nullptr;
+    b('}');
+}
+
+enum class Codes {
     some,
     string,
     constants,
 };
 
-BSON b;
-b('{');
-
-if (b["str"]('{')) {
-    b["cstring"] = "text";
-    b["fstring"] = F("text");
-    b["String"] = String("text");
-    b('}');
-}
-
-if (b[Const::constants]('{')) {
-    b[Const::some] = Const::string;
-    b[Const::string] = "cstring";
-    b[Const::constants] = 123;
-    b('}');
-}
-
-if (b["num"]('{')) {
-    b["int8"] = 123;
-    b["int16"] = 12345;
-    b["int32"] = -123456789;
+if (b["codes"]('{')) {
+    b["some"] = BSCode(Codes::constants);
+    b[BSCode(Codes::string)] = "string";
+    b[BSCode(Codes::some)] = BSCode(Codes::string);
     b('}');
 }
 
 if (b["arr"]('[')) {
-    b += "str";
     b += 123;
-    b += 3.14;
-    b += Const::string;
+    b += 3.1415;
+    b += "str";
+    b += false;
+    b += nullptr;
+    b += BSCode(Codes::some);
     b(']');
 }
 
 b('}');
+
+b.stringify(Serial, true);
 ```
 
 ### Статическая сборка
 ```cpp
-uint8_t bson[] = {
-    BSON_CONT('{'),
-    BSON_KEY("str", 3),
-    BSON_STR("hello", 5),
+uint8_t bson_st[] = {
+    BS_CONT('{'),
+    BS_STR("str1", 3),
+    BS_CHARS('s', 't', 'r', 'i', 'n', 'g'),
 
-    BSON_KEY("int", 3),
-    BSON_INT16(12345),
+    BS_STR("str2", 3),
+    BS_STR("string", 6),
 
-    BSON_KEY("arr", 3),
-    BSON_CONT('['),
-    BSON_STR("string", 6),
-    BSON_CODE(12),
-    BSON_INT8(123),
-    BSON_INT8(-123),
-    BSON_INT16(12345),
-    BSON_INT16(-12345),
-    BSON_INT32(12345678),
-    BSON_INT32(-12345678),
-    BSON_FLOAT(3.1415),
-    BSON_BOOL(true),
-    BSON_CONT(']'),
+    BS_STR("int", 3),
+    BS_INT16(12345),
 
-    BSON_CONT('}'),
+    BS_STR("arr", 3),
+    BS_CONT('['),
+    BS_CODE(12),
+    BS_ZERO(),
+    BS_INT8(123),
+    BS_FLOAT(3.1415),
+    BS_BOOL(true),
+    BS_NULL(),
+    BS_CONT(']'),
+
+    BS_CONT('}'),
 };
 ```
 
 ### Парсинг
 ```cpp
-// сборка
-
 struct Str {
     int v;
     float f;
 };
-
-BSON bs;
-bs += 1234;
-bs += "keks";
-bs += true;
-bs += 3.14;
-bs.addBin(Str{321, 33.44});
-
-// парсинг
-
-BSON::Parser p(&bs);
 
 int v;
 char s[5];
@@ -322,11 +359,13 @@ bool b;
 float f;
 Str str;
 
-if (p.readInt(&v) &&
-    p.readStr(s, sizeof(s)) &&
-    p.readBool(&b) &&
-    p.readFloat(&f) &&
-    p.readBin(&str)) {
+BSParser p(bs, sizeof(bs));
+
+if (p.parseInt(&v) &&
+    p.parseStr(s, sizeof(s)) &&
+    p.parseBool(&b) &&
+    p.parseFloat(&f) &&
+    p.parseBin(&str)) {
     //
     Serial.println("done");
     Serial.println(v);
@@ -348,7 +387,7 @@ if (p.readInt(&v) &&
 <a id="versions"></a>
 
 ## Версии
-- v2.0.0
+- v3.0.0
 
 <a id="install"></a>
 ## Установка

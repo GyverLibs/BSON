@@ -2,76 +2,79 @@
 #include <BSON.h>
 
 uint8_t bson_st[] = {
-    BSON_CONT('{'),
-    BSON_KEY("str", 3),
-    BSON_STR("hello", 5),
+    BS_CONT('{'),
+    BS_STR("str", 3),
+    BS_STR("hello", 5),
 
-    BSON_KEY("int", 3),
-    BSON_INT16(12345),
+    BS_STR("int", 3),
+    BS_INT16(12345),
 
-    BSON_KEY("arr", 3),
-    BSON_CONT('['),
-    // BSON_STR("string", 6),
-    BSON_CHARS('s', 't', 'r', 'i', 'n', 'g'),
-    BSON_CODE(12),
-    BSON_INT8(123),
-    BSON_INT8(-123),
-    BSON_INT16(12345),
-    BSON_INT16(-12345),
-    BSON_INT32(12345678),
-    BSON_INT32(-12345678),
-    BSON_FLOAT(3.1415),
-    BSON_BOOL(true),
-    BSON_CONT(']'),
+    BS_STR("arr", 3),
+    BS_CONT('['),
+    // BS_STR("string", 6),
+    BS_CHARS('s', 't', 'r', 'i', 'n', 'g'),
+    BS_CODE(12),
+    BS_INT8(123),
+    BS_INT8(-123),
+    BS_INT16(12345),
+    BS_INT16(-12345),
+    BS_INT32(12345678),
+    BS_INT32(-12345678),
+    BS_FLOAT(3.1415),
+    BS_BOOL(true),
+    BS_NULL(),
+    BS_CONT(']'),
 
-    BSON_CONT('}'),
+    BS_CONT('}'),
 };
 
 void setup() {
     Serial.begin(115200);
     Serial.println("start");
 
-    // BSON b;
-    // b.concat(bson_st, sizeof(bson_st));
-    // b.stringify(Serial);
+    BSParser p(bson_st, sizeof(bson_st));
 
-    BSON::Parser p(bson_st, sizeof(bson_st));
-
-    while (p.next()) {
+    while (p.parse()) {
         switch (p.getType()) {
             case BSType::String:
                 Serial.print("String: ");
-                Serial.write(p.toStr(), p.length());
+                Serial.write(p.getStr(), p.length());
                 Serial.println();
                 break;
 
-            case BSType::Boolean:
+            case BSType::Bool:
                 Serial.print("Boolean: ");
-                Serial.println(p.toBool());
+                Serial.println(p.getBool());
                 break;
 
-            case BSType::Integer:
+            case BSType::Int:
                 Serial.print("Integer: ");
-                Serial.println(p.toInt());
+                Serial.println(p.getInt());
                 break;
 
             case BSType::Float:
                 Serial.print("Float: ");
-                Serial.println(p.toFloat());
+                Serial.println(p.getFloat());
                 break;
 
             case BSType::Code:
                 Serial.print("Code: ");
-                Serial.println(p.toCode<int>());
+                Serial.println(p.getCode());
                 break;
 
-            case BSType::Binary:
+            case BSType::Bin:
                 Serial.println("Binary");
                 break;
 
-            case BSType::Container:
-                Serial.print(p.isObject() ? "Object" : "Array");
-                Serial.println(p.isOpen() ? "Open" : "Close");
+            case BSType::Null:
+                Serial.println("Null");
+                break;
+
+            case BSType::Cont:
+                Serial.println(p.getCont());
+                break;
+
+            default:
                 break;
         }
     }

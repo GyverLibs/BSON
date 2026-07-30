@@ -17,19 +17,18 @@ void setup() {
     bs += 3.14;
     bs.addBin(Str{321, 33.44});
 
-    BSON::Parser p(&bs);
-
     int v;
     char s[5];
     bool b;
     float f;
     Str str;
+    BSParser p(bs.buf(), bs.length());
 
-    if (p.readInt(&v) &&
-        p.readStr(s, sizeof(s)) &&
-        p.readBool(&b) &&
-        p.readFloat(&f) &&
-        p.readBin(&str)) {
+    if (p.parseInt(&v) &&
+        p.parseStr(s, sizeof(s)) &&
+        p.parseBool(&b) &&
+        p.parseFloat(&f) &&
+        p.parseBin(&str)) {
         //
         Serial.println("done");
         Serial.println(v);
