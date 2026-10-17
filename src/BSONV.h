@@ -66,7 +66,7 @@ class BSONV {
         _push(_BS_SUBT | _BS_BOOL | b);
     }
     void addBool(const void* b) {
-        addBool(*(const bool*)b);
+        addBool(*(const uint8_t*)b != 0);
     }
 
     BSON_MAKE_ADD(bool, addBool)
